@@ -1,7 +1,7 @@
 package time
 
 import (
-//	"fmt"
+	"fmt"
 	"time"
 	"strconv"
 	"strings"
@@ -12,6 +12,17 @@ import (
 type Duration = time.Duration
 type Time struct {
 	Current time.Time
+}
+
+
+func Wrap(t time.Time) Time {
+	return Time{
+		Current: t,
+	}
+}
+
+func (t Time) UnWrap() time.Time {
+	return t.Current;
 }
 
 //获取当前时间
@@ -39,6 +50,54 @@ func (t Time) Weekday() string {
     return weeks[t.Current.Weekday()]
 }
 
+func (t Time) Date() (year, month, day int) {
+    monthMap := map[time.Month]int{
+        time.January: 1, time.February: 2, time.March: 3,     time.April: 4,    time.May: 5,       time.June: 6,
+        time.July: 7,    time.August: 8,   time.September: 9, time.October: 10, time.November: 11, time.December: 12,
+    }
+    return t.Current.Year(), monthMap[t.Current.Month()], t.Current.Day()
+}
+
+func (t Time) Clock() (hour , min, sec int) {
+    return t.Current.Clock()
+}
+
+func (t Time) Year() int {
+    return t.Current.Year()
+}
+
+func (t Time) Month() int {
+    monthMap := map[time.Month]int{
+        time.January: 1, time.February: 2, time.March: 3,     time.April: 4,    time.May: 5,       time.June: 6,
+        time.July: 7,    time.August: 8,   time.September: 9, time.October: 10, time.November: 11, time.December: 12,
+    }
+    return monthMap[t.Current.Month()]
+}
+
+func (t Time) YearDay() int {
+    return t.Current.YearDay()
+}
+
+func (t Time) Day() int {
+    return t.Current.Day()
+}
+
+func (t Time) Hour() int {
+    return t.Current.Hour()
+}
+
+func (t Time) Minute() int {
+    return t.Current.Minute()
+}
+
+func (t Time) Second() int {
+    return t.Current.Second()
+}
+
+func (t Time) Nanosecond() int {
+    return t.Current.Nanosecond()
+}
+
 //获取时间对应的周
 func (t Time) WeekInt(start int) int {
     var weeks map[time.Weekday]int
@@ -59,6 +118,10 @@ func (t Time) WeekStr(start int) string {
        weeks = map[time.Weekday]string{time.Monday: "1", time.Tuesday: "2", time.Wednesday: "3", time.Thursday: "4", time.Friday: "5", time.Saturday: "6", time.Sunday: "7"}
     }
     return weeks[t.Current.Weekday()]
+}
+
+func (t Time) ToStr() string {
+    return t.Format(`Y-m-d H:M:s`)
 }
 
 //格式化时间为字符串
@@ -117,88 +180,168 @@ func SleepMsec(msec Duration) {
 	time.Sleep(msec * time.Millisecond)
 }
 
-func StrToTime(timeStr string) (Time, error) {
-    regYear := "[1-9][0-9]{3}"
-    regMonth := "(0[0-9])|(1[0-2])"
-    regDay := "([0-2][0-9])|(3[0-1])"
-    regHour24 := "([0-1][0-9])|(2[0-3])"
-    //regHour12 := "(0[0-9])|(1[0-1])"
-    regMinute := "[0-5][0-9]"
-    regSecond := "[0-5][0-9]"
 
-    regs := []map[string]string{
-        //YYYY-MM-DD
-        map[string]string{
-            //"reg": "^" + regYear + "-" + regMonth + "-" + regDay + "$",
-            "reg": "^" + regYear + "-" + regMonth + "-" + regDay + "$",
-            "format_str": "YYYY-MM-DD",
-            "format": "2006-01-02 15:04:05 -0700",
-            "pre": "",
-            "suffix": " 00:00:00 +0800",
-        },
-        //YYYYMMDD
-        map[string]string{
-            //"reg": "^" + regYear + regMonth + regDay + "$",
-            "reg": "^" + regYear + regMonth + regDay + "$",
-            "format_str": "YYYYMMDD",
-            "format": "20060102 15:04:05 -0700",
-            "pre": "",
-            "suffix": " 00:00:00 +0800",
-        },
-        //YYYY-MM-DD HH:II:SS
-        map[string]string{
-            //"reg": "^" + regYear + "-" + regMonth + "-" + regDay + " "+ regHour24 + ":" + regMinute + ":" + regSecond + "$",
-            "reg": "^" + regYear + "-" + regMonth + "-" + regDay + " "+ regHour24 + ":" + regMinute + ":" + regSecond + "$",
-            "format_str": "YYYY-MM-DD HH:II:SS",
-            "format": "2006-01-02 15:04:05 -0700",
-            "pre": "",
-            "suffix": " +0800",
-        },
-        //YYYYMMDDHHIISS
-        map[string]string{
-            "reg": "^" + regYear + regMonth + regDay + regHour24 + regMinute + regSecond + "$",
-            "format_str": "YYYYMMDDHHIISS",
-            "format": "20060102150405  -0700",
-            "pre": "",
-            "suffix": " +0800",
-        },
-        ////HH:II:SS
-        //map[string]string{
-        //    "reg": "^" + regHour24 + ":" + regMinute + ":" + regSecond + "$",
-        //    "format_str": "HH:II:SS",
-        //    "format": "20060102 15:04:05",
-        //    "pre": "00000000 ",
-        //    "suffix": "",
-        //},
-        ////HHIISS
-        //map[string]string{
-        //    "reg": "^" + regHour24 + regMinute + regSecond + "$",
-        //    "format_str": ":HIISS",
-        //    "format": "20060102 150405",
-        //    "pre": "00000000 ",
-        //    "suffix": "",
-        //},
+//var t time.Time
+//t, err = time.StrToTime("2018-01-01 12:34:56"); fmt.Println(t, err)
+//t, err = time.StrToTime("2018-11-21"); fmt.Println(t, err)
+//t, err = time.StrToTime("20181121"); fmt.Println(t, err)
+//t, err = time.StrToTime("2018-1-2"); fmt.Println(t, err)
+//t, err = time.StrToTime("12:34:56"); fmt.Println(t, err)
+//t, err = time.StrToTime("123456"); fmt.Println(t, err)
+//t, err = time.StrToTime("Jan 2 15:04:05 2016"); fmt.Println(t, err)           //ANSIC
+//t, err = time.StrToTime("Jan 2 15:04:05 AWST 2016"); fmt.Println(t, err)      //UnixDate
+//t, err = time.StrToTime("Jan 02 15:04:05 +0800 2016"); fmt.Println(t, err)    //RubyDate
+//t, err = time.StrToTime("02 Jan 26 15:04 MST"); fmt.Println(t, err)           //RFC822  "02 Jan 06 15:04 MST"
+//t, err = time.StrToTime("02 Jan 2126 15:04:05 MST"); fmt.Println(t, err)      //RFC1123 "02 Jan 2006 15:04:05 MST"
+//t, err = time.StrToTime("02 Jan 06 15:04 +0800"); fmt.Println(t, err)         //RFC822Z
+//t, err = time.StrToTime("02 Jan 2106 15:04:05 +0800"); fmt.Println(t, err)    //RFC1123Z
+func StrToTime(timeStr string) (Time, error) {
+    var err     error
+    var now = time.Now()
+
+    monthMap := map[time.Month]string{
+        time.January: "1", time.February: "2", time.March: "3",     time.April: "4",    time.May: "5",       time.June: "6",
+        time.July: "7",    time.August: "8",   time.September: "9", time.October: "10", time.November: "11", time.December: "12",
     }
-    var err error
-    var newTime Time
-    var tmpTime time.Time
+    monthSMap := map[string]string{
+        "Jan": "1", "Feb": "2", "Mar": "3", "Apr": "4", "May": "5", "Jun": "6",
+        "Jul": "7", "Aug": "8", "Sep": "9", "Oct": "10", "Nov": "11", "Dec": "12",
+        "January": "1", "February": "2", "March": "3",     "April": "4",                      "June": "6",
+        "July": "7",    "August": "8",   "September": "9", "October": "10", "November": "11", "December": "12",
+    }
+
+    fields := map[string]string{
+        "year":     strconv.Itoa(now.Year()),
+        "month":    monthMap[now.Month()],
+        "monthE":   "",
+        "day":      strconv.Itoa(now.Day()),
+        "hour":     "00",   //strconv.Itoa(now.Hour()),
+        "minute":   "00",   //strconv.Itoa(now.Minute()),
+        "second":   "00",   //strconv.Itoa(now.Second()),
+        "zoneUtc":  "+0800",
+        "zoneGmt":  "",
+        //"zoneTime": "",
+        "apm":      "",
+    }
+
+    regYear    := "(?P<year>(?:[0-9]{2})|(?:[1-9][0-9]{3}))"
+    regYearA   := "(?P<year>[1-9][0-9]{3})"
+    regMonth   := "(?P<month>(?:[1-9])|(?:0[0-9])|(?:1[0-2]))"
+    regMonthA  := "(?P<month>(?:0[0-9])|(?:1[0-2]))"
+    regMonthE  := "(?P<monthE>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December)"
+    regDay     := "(?P<day>(?:[1-9])|(?:[0-2][0-9])|(?:3[0-1]))"
+    regDayA    := "(?P<day>(?:[0-2][0-9])|(?:3[0-1]))"
+    regHour    := "(?P<hour>(?:[1-9])|(?:[0-1][0-9])|(?:2[0-3]))"
+    regHourA   := "(?P<hour>(?:[0-1][0-9])|(?:2[0-3]))"
+    regMinute  := "(?P<minute>[0-5]?[0-9])"
+    regMinuteA := "(?P<minute>[0-5][0-9])"
+    regSecond  := "(?P<second>[0-5]?[0-9])"
+    regSecondA := "(?P<second>[0-5][0-9])"
+    regZoneUtc := "(?P<zoneUtc>[+-](?:[0-1][0-9]{3}))"
+    regZoneGmt := "(?P<zoneGmt>(?:[A-Z]{2,4}))"
+    //regZoneTime:= "(?P<zoneTime>[0-9]{2}:[0-9]{2})"
+
+    regs := []string{
+        "^#year#-#month#-#day#$",                                      //YYYY-MM-DD
+        "^#yearA##monthA##dayA#$",                                     //YYYYMMDD
+        "^#year#-#month#-#day# #hour#:#minute#:#second#$",             //YYYY-MM-DD HH:II:SS
+        "^#yearA##monthA##dayA##hourA##minuteA##secondA#$",            //YYYYMMDDHHIISS
+        "^#hour#:#minute#:#second#$",                                  //HH:II:SS
+        "^#hourA##minuteA##secondA#$",                                 //HHIISS
+        "^#monthE# #day# #hour#:#minute#:#second# #year#$",            //ANSIC "Jan _2 15:04:05 2006"
+        "^#monthE# #day# #hour#:#minute#:#second# #zoneGmt# #year#$",  //UnixDate "Jan _2 15:04:05 MST 2006"
+        "^#monthE# #day# #hour#:#minute#:#second# #zoneUtc# #year#$",  //RubyDate "Jan 02 15:04:05 -0700 2006"
+        "^#day# #monthE# #year# #hour#:#minute# #zoneGmt#$",           //RFC822  "02 Jan 06 15:04 MST"
+        "^#day# #monthE# #year# #hour#:#minute# #zoneUtc#$",           //RFC822Z "02 Jan 06 15:04 -0700" // 使用数字表示时区的RFC822
+        "^#day#-#monthE#-#year# #hour#:#minute#:#second# #zoneGmt#$",  //RFC850  "02-Jan-06 15:04:05 MST"
+        "^#day# #monthE# #year# #hour#:#minute#:#second# #zoneGmt#$",  //RFC1123 "02 Jan 2006 15:04:05 MST"
+        "^#day# #monthE# #year# #hour#:#minute#:#second# #zoneUtc#$",  //RFC1123Z "02 Jan 2006 15:04:05 -0700" // 使用数字表示时区的RFC1123
+        //"^#yearA#-#monthA#-#dayA#T#hourA#:#minuteA#:#secondA#Z#zoneTime#$", //RFC3339 "2006-01-02T15:04:05Z07:00"
+        //RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
+    }
+
     flag := 0
-    for _,row := range regs {
-        match, _ := regexp.MatchString(row["reg"], timeStr)
-        formatLen := strings.Count(row["format_str"], "")
-        timeLen := strings.Count(timeStr, "")
-        if match && formatLen == timeLen {
-            tmp := row["pre"] + timeStr + row["suffix"]
-            tmpTime, err = time.Parse(row["format"], tmp)
-            newTime.Current = tmpTime.Local()
+    for _,regRule := range regs {
+        //regRule := row["reg"]
+        regRule = strings.Replace(regRule, "#year#",    regYear,    -1)
+        regRule = strings.Replace(regRule, "#yearA#",   regYearA,   -1)
+        regRule = strings.Replace(regRule, "#month#",   regMonth,   -1)
+        regRule = strings.Replace(regRule, "#monthA#",  regMonthA,  -1)
+        regRule = strings.Replace(regRule, "#day#",     regDay,     -1)
+        regRule = strings.Replace(regRule, "#dayA#",    regDayA,    -1)
+        regRule = strings.Replace(regRule, "#hour#",    regHour,    -1)
+        regRule = strings.Replace(regRule, "#hourA#",   regHourA,   -1)
+        regRule = strings.Replace(regRule, "#minute#",  regMinute,  -1)
+        regRule = strings.Replace(regRule, "#minuteA#", regMinuteA, -1)
+        regRule = strings.Replace(regRule, "#second#",  regSecond,  -1)
+        regRule = strings.Replace(regRule, "#secondA#", regSecondA, -1)
+        regRule = strings.Replace(regRule, "#monthE#",  regMonthE,  -1)
+        regRule = strings.Replace(regRule, "#zoneUtc#", regZoneUtc, -1)
+        regRule = strings.Replace(regRule, "#zoneGmt#", regZoneGmt, -1)
+        //regRule = strings.Replace(regRule, "#zoneTime#",regZoneTime,-1)
+
+        reg := regexp.MustCompile(regRule)
+        if reg.MatchString(timeStr) {
+            matchs := reg.FindStringSubmatch(timeStr)
+            groups := reg.SubexpNames()
+            for i, name := range groups {
+                if i != 0 && name != "" {
+                    fields[name] = matchs[i]
+                }
+            }
             flag = 1
             break
         }
     }
     if flag == 0 {
-        err = errors.New("do'not matched")
+        return Time{}, errors.New("do'not matched")
     }
 
-    return newTime, err
+    //修正部分数据
+    if fields["monthE"] != "" {
+        fields["month"] = monthSMap[fields["monthE"]]
+    }
+    if (strings.Count(fields["year"], "")-1) == 2 {
+        fields["year"]   = "20" + fields["year"]
+    }
+    if (strings.Count(fields["month"], "")-1) == 1 {
+        fields["month"]  = "0" + fields["month"]
+    }
+    if (strings.Count(fields["day"], "")-1) == 1 {
+        fields["day"]    = "0" + fields["day"]
+    }
+    if (strings.Count(fields["hour"], "")-1) == 1 {
+        fields["hour"]   = "0" + fields["hour"]
+    }
+    if (strings.Count(fields["minute"], "")-1) == 1 {
+        fields["minute"] = "0" + fields["minute"]
+    }
+    if (strings.Count(fields["second"], "")-1) == 1 {
+        fields["second"] = "0" + fields["second"]
+    }
+
+    var data string
+    var format string
+    if fields["zoneGmt"] != "" {
+        data   = fmt.Sprintf("%s-%s-%s %s:%s:%s %s", fields["year"], fields["month"], fields["day"], fields["hour"], fields["minute"], fields["second"], fields["zoneGmt"])
+        format = fmt.Sprintf("%s-%s-%s %s:%s:%s %s", "2006", "01", "02", "15", "04", "05", "MST")
+    //} else if fields["zoneTime"] != "" {
+    //    data   = fmt.Sprintf("%s-%s-%sT%s:%s:%sZ%s", fields["year"], fields["month"], fields["day"], fields["hour"], fields["minute"], fields["second"], fields["zoneTime"])
+    //    format = fmt.Sprintf("%s-%s-%sT%s:%s:%sZ%s", "2006", "01", "02", "15", "04", "05", "07:00")
+    //    //RFC3339     = "2006-01-02T15:04:05Z07:00"
+    } else {
+        data   = fmt.Sprintf("%s-%s-%s %s:%s:%s %s", fields["year"], fields["month"], fields["day"], fields["hour"], fields["minute"], fields["second"], fields["zoneUtc"])
+        format = fmt.Sprintf("%s-%s-%s %s:%s:%s %s", "2006", "01", "02", "15", "04", "05", "-0700")
+    }
+    //fmt.Println(data)
+    //fmt.Println(format)
+    //fmt.Println(fields)
+
+    tmp, err := time.Parse(format, data)
+    if err == nil {
+        return Time{Current: tmp}, nil
+    } else {
+        return Time{}, err
+    }
 }
 
