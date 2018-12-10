@@ -107,9 +107,9 @@ func (c Sched) CalcNextTime(SchedArr map[string]string) string{
 	//处理时间差
 	nextDay	= nextDay + diffDay
 
-    nextTimeStr := fmt.Sprintf("%d-%d-%d %d:%d:%d", nextYear, nextMonth, nextDay, nextHour, nextMinute, nextSecond)
-	nextTimeT,_   := time.StrToTime(nextTimeStr)
-	nextTimeUnix  := nextTimeT.Unix()       //需要时区
+    nextTimeStr  := fmt.Sprintf("%04d-%02d-%02d %02d:%02d:%02d", nextYear, nextMonth, nextDay, nextHour, nextMinute, nextSecond)
+	nextTimeT,_  := time.StrToTime(nextTimeStr)
+	nextTimeUnix := nextTimeT.Unix()       //需要时区
 	time.Unix(nextTimeUnix, 0).Format("F")
 	return time.Unix(nextTimeUnix,0).Format("F")
 }
