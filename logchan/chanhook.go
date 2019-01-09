@@ -131,11 +131,11 @@ func LogWrite() {
 	var limit, i int
 	var line string
 	var ok bool
-    limit := 0
+    limitClose := 0
 	for {
-        if limit > 100 {
+        if limitClose > 100 {
             LogClose()
-            limit = 0
+            limitClose = 0
         }
 		limit = len(logChan)
 		var bodys = make(map[string]*bytes.Buffer)
@@ -156,7 +156,7 @@ func LogWrite() {
 			logFilePs[logfile].WriteString(body.String())
 		}
 		time.Sleep(time.Second * time.Duration(delay))
-        limit++
+        limitClose++
 	}
 }
 
