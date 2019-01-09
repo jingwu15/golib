@@ -1,0 +1,38 @@
+package: github.com/jingwu15/golib
+import:
+- package: github.com/beanstalkd/go-beanstalk
+- package: github.com/buger/jsonparser
+- package: github.com/garyburd/redigo
+  version: ^1.6.0
+  subpackages:
+  - redis
+- package: github.com/json-iterator/go
+  version: ^1.1.5
+- package: github.com/sirupsen/logrus
+  version: ^1.3.0
+- package: github.com/spf13/viper
+  version: ^1.3.1
+- package: golang.org/x/crypto
+  repo: https://github.com/golang/crypto
+  vcs: git
+- package: golang.org/x/gddo
+  repo: https://github.com/golang/gddo
+  vcs: git
+- package: golang.org/x/lint
+  repo: https://github.com/golang/lint
+  vcs: git
+- package: golang.org/x/net
+  repo: https://github.com/golang/net
+  vcs: git
+- package: golang.org/x/protobuf
+  repo: https://github.com/golang/protobuf
+  vcs: git
+- package: golang.org/x/sys
+  repo: https://github.com/golang/sys
+  vcs: git
+- package: golang.org/x/text
+  repo: https://github.com/golang/text
+  vcs: git
+- package: golang.org/x/tools
+  repo: https://github.com/golang/tools
+  vcs: git

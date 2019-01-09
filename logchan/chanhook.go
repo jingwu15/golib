@@ -131,7 +131,12 @@ func LogWrite() {
 	var limit, i int
 	var line string
 	var ok bool
+    limit := 0
 	for {
+        if limit > 100 {
+            LogClose()
+            limit = 0
+        }
 		limit = len(logChan)
 		var bodys = make(map[string]*bytes.Buffer)
 		for i = 0; i < limit; i++ {
@@ -151,6 +156,7 @@ func LogWrite() {
 			logFilePs[logfile].WriteString(body.String())
 		}
 		time.Sleep(time.Second * time.Duration(delay))
+        limit++
 	}
 }
 
@@ -174,8 +180,9 @@ func LogClose() {
 	for logfile, body := range bodys {
 		logFilePs[logfile].WriteString(body.String())
 	}
-	for _, fp := range logFilePs {
+	for fkey, fp := range logFilePs {
 		fp.Close()
+        delete(logFilePs, fkey)
 	}
 }
 

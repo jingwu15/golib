@@ -2,7 +2,7 @@ package nexttime
 
 import (
 	"strings"
-	"yundun/crontab_builder/lib/time"
+    "github.com/jingwu15/golib/time"
 	"strconv"
 	"bytes"
 )
