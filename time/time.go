@@ -8,12 +8,46 @@ import (
     "regexp"
     "errors"
 )
+var monthMapIntToTimeMonth = map[int]time.Month{
+     1: time.January, 2: time.February, 3: time.March, 4: time.April, 5: time.May, 6: time.June,
+     7: time.July, 8: time.August, 9: time.September, 10: time.October, 11: time.November, 12: time.December,
+}
+
+var monthMapTimeToInt = map[time.Month]int{
+    time.January: 1, time.February: 2, time.March: 3,     time.April: 4,    time.May: 5,       time.June: 6,
+    time.July: 7,    time.August: 8,   time.September: 9, time.October: 10, time.November: 11, time.December: 12,
+}
+var monthMapTimeToStr1 = map[time.Month]string{
+    time.January: "1", time.February: "2", time.March: "3",     time.April: "4",    time.May: "5",       time.June: "6",
+    time.July: "7",    time.August: "8",   time.September: "9", time.October: "10", time.November: "11", time.December: "12",
+}
+var monthMapTimeToStr2 = map[time.Month]string{
+    time.January: "01", time.February: "02", time.March: "03",     time.April: "04",   time.May: "05",      time.June: "06",
+    time.July: "07",    time.August: "08",   time.September: "09", time.October: "10", time.November: "11", time.December: "12",
+}
+var monthMapEnToStr1 = map[string]string{
+    "Jan": "1", "Feb": "2", "Mar": "3", "Apr": "4", "May": "5", "Jun": "6", "Jul": "7", "Aug": "8", "Sep": "9", "Oct": "10", "Nov": "11", "Dec": "12",
+    "January": "1", "February": "2", "March": "3", "April": "4", "June": "6", "July": "7", "August": "8", "September": "9", "October": "10", "November": "11", "December": "12",
+}
+var monthMapEnToStr2 = map[string]string{
+    "Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04", "May": "05", "Jun": "06", "Jul": "07", "Aug": "08", "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12",
+    "January": "01", "February": "02", "March": "03", "April": "04", "June": "06", "July": "07", "August": "08", "September": "09", "October": "10", "November": "11", "December": "12",
+}
+var monthMapStrToEn3 = map[string]string{
+    "1": "Jan", "2": "Feb", "3": "Mar", "4": "Apr", "5": "May", "6": "Jun", "7": "Jul", "8": "Aug", "9": "Sep",
+    "01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr", "05": "May", "06": "Jun", "07": "Jul", "08": "Aug", "09": "Sep",
+    "10": "Oct", "11": "Nov", "12": "Dec",
+}
+var monthMapStrToEnFull = map[string]string{
+    "1": "January", "2": "February", "3": "March", "4": "April", "6": "June", "7": "July", "8": "August", "9": "September",
+    "01": "January", "02": "February", "03": "March", "04": "April", "06": "June", "07": "July", "08": "August", "09": "September",
+    "10": "October", "11": "November", "12": "December",
+}
 
 type Duration = time.Duration
 type Time struct {
 	Current time.Time
 }
-
 
 func Wrap(t time.Time) Time {
 	return Time{
@@ -51,11 +85,7 @@ func (t Time) Weekday() string {
 }
 
 func (t Time) Date() (year, month, day int) {
-    monthMap := map[time.Month]int{
-        time.January: 1, time.February: 2, time.March: 3,     time.April: 4,    time.May: 5,       time.June: 6,
-        time.July: 7,    time.August: 8,   time.September: 9, time.October: 10, time.November: 11, time.December: 12,
-    }
-    return t.Current.Year(), monthMap[t.Current.Month()], t.Current.Day()
+    return t.Current.Year(), monthMapTimeToInt[t.Current.Month()], t.Current.Day()
 }
 
 func (t Time) Clock() (hour , min, sec int) {
@@ -67,11 +97,7 @@ func (t Time) Year() int {
 }
 
 func (t Time) Month() int {
-    monthMap := map[time.Month]int{
-        time.January: 1, time.February: 2, time.March: 3,     time.April: 4,    time.May: 5,       time.June: 6,
-        time.July: 7,    time.August: 8,   time.September: 9, time.October: 10, time.November: 11, time.December: 12,
-    }
-    return monthMap[t.Current.Month()]
+    return monthMapTimeToInt[t.Current.Month()]
 }
 
 func (t Time) YearDay() int {
@@ -180,7 +206,6 @@ func SleepMsec(msec Duration) {
 	time.Sleep(msec * time.Millisecond)
 }
 
-
 //var t time.Time
 //t, err = time.StrToTime("2018-01-01 12:34:56"); fmt.Println(t, err)
 //t, err = time.StrToTime("2018-11-21"); fmt.Println(t, err)
@@ -199,20 +224,9 @@ func StrToTime(timeStr string) (Time, error) {
     var err     error
     var now = time.Now()
 
-    monthMap := map[time.Month]string{
-        time.January: "1", time.February: "2", time.March: "3",     time.April: "4",    time.May: "5",       time.June: "6",
-        time.July: "7",    time.August: "8",   time.September: "9", time.October: "10", time.November: "11", time.December: "12",
-    }
-    monthSMap := map[string]string{
-        "Jan": "1", "Feb": "2", "Mar": "3", "Apr": "4", "May": "5", "Jun": "6",
-        "Jul": "7", "Aug": "8", "Sep": "9", "Oct": "10", "Nov": "11", "Dec": "12",
-        "January": "1", "February": "2", "March": "3",     "April": "4",                      "June": "6",
-        "July": "7",    "August": "8",   "September": "9", "October": "10", "November": "11", "December": "12",
-    }
-
     fields := map[string]string{
         "year":     strconv.Itoa(now.Year()),
-        "month":    monthMap[now.Month()],
+        "month":    monthMapTimeToStr1[now.Month()],
         "monthE":   "",
         "day":      strconv.Itoa(now.Day()),
         "hour":     "00",   //strconv.Itoa(now.Hour()),
@@ -299,7 +313,7 @@ func StrToTime(timeStr string) (Time, error) {
 
     //修正部分数据
     if fields["monthE"] != "" {
-        fields["month"] = monthSMap[fields["monthE"]]
+        fields["month"] = monthMapEnToStr1[fields["monthE"]]
     }
     if (strings.Count(fields["year"], "")-1) == 2 {
         fields["year"]   = "20" + fields["year"]
@@ -343,5 +357,38 @@ func StrToTime(timeStr string) (Time, error) {
     } else {
         return Time{}, err
     }
+}
+
+//月份由英文转换为一位字符串 Jan -> 1
+func MonthEnToStr1(month string) string {
+    return monthMapEnToStr1[month]
+}
+//月份由英文转换为两位字符串 Jan -> 01
+func MonthEnToStr2(month string) string {
+    return monthMapEnToStr2[month]
+}
+//月份由字符串转换英文(短) 1 -> Jan,  01 -> Jan
+func MonthStrToEn3(month string) string {
+    return monthMapStrToEn3[month]
+}
+//月份由字符串转换英文(长) 1 -> January,  01 -> January
+func MonthStrToEnFull(month string) string {
+    return monthMapStrToEnFull[month]
+}
+//月份由标准库的time.Month类型转换整数 time.January -> 1
+func MonthTimeToInt(month time.Month) int {
+    return monthMapTimeToInt[month]
+}
+//月份由标准库的time.Month类型转换一位字符串 time.January -> 1
+func MonthTimeMonthToStr1(month time.Month) string {
+    return monthMapTimeToStr1[month]
+}
+//月份由标准库的time.Month类型转换两位字符串 time.January -> 01
+func MonthTimeMonthToStr2(month time.Month) string {
+    return monthMapTimeToStr2[month]
+}
+//月份由标准库的time.Month类型转换整数 time.January -> 1
+func MonthIntToTimeMonth(month int) time.Month {
+    return monthMapIntToTimeMonth[month]
 }
 
