@@ -52,7 +52,7 @@ var respError = map[string]error{
 
 type Beanstalk struct {
 	Conn       *textproto.Conn
-	addr       string
+	Addr       string
 	Tube       string
 	WatchTubes map[string]bool //watched
 }

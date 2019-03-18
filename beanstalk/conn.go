@@ -12,12 +12,15 @@ func New(addr string) (Beanstalk, error) {
 	if err != nil {
 		return Beanstalk{}, err
 	}
-	return Beanstalk{Conn: textproto.NewConn(conn)}, nil
+	return Beanstalk{Conn: textproto.NewConn(conn), Addr: addr}, nil
 }
 
-func (bs *Beanstalk) ReConn() error {
-	bs.Close()
-	conn, err := net.Dial("tcp", bs.addr)
+func (bs *Beanstalk) Reconn() error {
+	err := bs.Close()
+	if err != nil {
+		return err
+	}
+	conn, err := net.Dial("tcp", bs.Addr)
 	if err != nil {
 		return err
 	}
