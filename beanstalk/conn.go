@@ -7,12 +7,12 @@ import (
 	"net/textproto"
 )
 
-func New(addr string) (Beanstalk, error) {
+func New(addr string) (*Beanstalk, error) {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		return Beanstalk{}, err
+		return &Beanstalk{Addr: addr}, err
 	}
-	return Beanstalk{Conn: textproto.NewConn(conn), Addr: addr}, nil
+	return &Beanstalk{Conn: textproto.NewConn(conn), Addr: addr}, nil
 }
 
 func (bs *Beanstalk) Reconn() error {
