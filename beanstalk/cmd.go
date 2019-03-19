@@ -132,13 +132,13 @@ func (bs *Beanstalk) ListTubes() ([]string, error) {
 }
 
 // ListTubes 列出所有存在的tube
-func (bs *Beanstalk) ListTubeUsed() (string, error) {
+func (bs *Beanstalk) ListTubeUsed() (tube string, err error) {
 	request, err := bs.cmd("list-tube-used")
 	if err != nil {
 		return "", err
 	}
-	body, err := bs.readBody(request, "USING")
-	return string(body), err
+	err = bs.readResponse(request, "USING %s", &tube)
+	return tube, err
 }
 
 // ListTubes 列出所有存在的tube
