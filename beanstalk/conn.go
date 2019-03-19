@@ -15,7 +15,7 @@ func New(addr string) (*Beanstalk, error) {
 	return &Beanstalk{Conn: textproto.NewConn(conn), Addr: addr}, nil
 }
 
-func (bs *Beanstalk) Reconn() error {
+func (bs *Beanstalk) ReConn() error {
 	err := bs.Close()
 	if err != nil {
 		return err
@@ -72,7 +72,22 @@ func (bs *Beanstalk) cmdPut(op string, body []byte, args ...interface{}) (Reques
 	return request, nil
 }
 
-func (bs *Beanstalk) readResponse(request Request, readBody bool, f string, a ...interface{}) (body []byte, err error) {
+func (bs *Beanstalk) readResponse(request Request, f string, a ...interface{}) error {
+	bs.Conn.StartResponse(request.id)
+	defer bs.Conn.EndResponse(request.id)
+	line, err := bs.Conn.ReadLine()
+	if err != nil {
+		return BSError{bs, request.op, err}
+	}
+	toScan := line
+	err = scan(toScan, f, a...)
+	if err != nil {
+		return BSError{bs, request.op, err}
+	}
+	return nil
+}
+
+func (bs *Beanstalk) readBody(request Request, f string, a ...interface{}) (body []byte, err error) {
 	bs.Conn.StartResponse(request.id)
 	defer bs.Conn.EndResponse(request.id)
 	line, err := bs.Conn.ReadLine()
@@ -80,19 +95,18 @@ func (bs *Beanstalk) readResponse(request Request, readBody bool, f string, a ..
 		return nil, BSError{bs, request.op, err}
 	}
 	toScan := line
-	if readBody {
-		var size int
-		toScan, size, err = parseSize(toScan)
-		if err != nil {
-			return nil, BSError{bs, request.op, err}
-		}
-		body = make([]byte, size+2) // 包括 CR NL
-		_, err = io.ReadFull(bs.Conn.R, body)
-		if err != nil {
-			return nil, BSError{bs, request.op, err}
-		}
-		body = body[:size] // 不包括 CR NL
+
+	var size int
+	toScan, size, err = parseSize(toScan)
+	if err != nil {
+		return nil, BSError{bs, request.op, err}
 	}
+	body = make([]byte, size+2) // 包括 CR NL
+	_, err = io.ReadFull(bs.Conn.R, body)
+	if err != nil {
+		return nil, BSError{bs, request.op, err}
+	}
+	body = body[:size] // 不包括 CR NL
 
 	err = scan(toScan, f, a...)
 	if err != nil {

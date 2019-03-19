@@ -2,16 +2,62 @@ package beanstalk
 
 import (
 	"strconv"
-	"time"
 )
+
+//cmd-put 总共执行put指令的次数
+//cmd-reserve 总共执行reserve指令的次数
+//cmd-use 总共执行use指令的次数
+//cmd-watch 总共执行watch指令的次数
+//cmd-ignore 总共执行ignore指令的次数
+//cmd-release 总共执行release指令的次数
+//cmd-bury 总共执行bury指令的次数
+//cmd-kick 总共执行kick指令的次数
+//cmd-stats 总共执行stats指令的次数
+//cmd-stats-job 总共执行stats-job指令的次数
+//cmd-stats-tube 总共执行stats-tube指令的次数
+//cmd-list-tubes 总共执行list-tubes指令的次数
+//cmd-list-tube-used 总共执行list-tube-used指令的次数
+//cmd-list-butes-watched 总共执行list-tubes-watched指令的次数
+//cmd-pause-tube 总共执行pause-tube指令的次数
 
 func (bs *Beanstalk) Use(tube string) error {
 	request, err := bs.cmd("use", tube)
 	if err != nil {
 		return err
 	}
-	_, err = bs.readResponse(request, true, "USING")
+	err = bs.readResponse(request, "USING")
 	return err
+}
+
+func (bs *Beanstalk) Watch(tube string) (count int64, err error) {
+	request, err := bs.cmd("watch", tube)
+	if err != nil {
+		return 0, err
+	}
+	err = bs.readResponse(request, "WATCHING %d", &count)
+	return count, err
+}
+
+func (bs *Beanstalk) Ignore(tube string) (count int64, err error) {
+	request, err := bs.cmd("ignore", tube)
+	if err != nil {
+		return 0, err
+	}
+	err = bs.readResponse(request, "WATCHING %d", &count)
+	return count, err
+}
+
+// Put 插入一个job到队列
+func (bs *Beanstalk) Put(body []byte, pri uint32, delay, ttr int) (id uint64, err error) {
+	request, err := bs.cmdPut("put", body, pri, strconv.Itoa(delay), strconv.Itoa(ttr))
+	if err != nil {
+		return 0, err
+	}
+	err = bs.readResponse(request, "INSERTED %d", &id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // Delete 删除任务
@@ -20,7 +66,7 @@ func (bs *Beanstalk) Delete(id uint64) error {
 	if err != nil {
 		return err
 	}
-	_, err = bs.readResponse(request, false, "DELETED")
+	err = bs.readResponse(request, "DELETED")
 	return err
 }
 
@@ -31,7 +77,7 @@ func (bs *Beanstalk) Release(id uint64, pri uint32, delay int) error {
 	if err != nil {
 		return err
 	}
-	_, err = bs.readResponse(request, false, "RELEASED")
+	err = bs.readResponse(request, "RELEASED")
 	return err
 }
 
@@ -41,7 +87,7 @@ func (bs *Beanstalk) Bury(id uint64, pri uint32) error {
 	if err != nil {
 		return err
 	}
-	_, err = bs.readResponse(request, false, "BURIED")
+	err = bs.readResponse(request, "BURIED")
 	return err
 }
 
@@ -51,21 +97,8 @@ func (bs *Beanstalk) Touch(id uint64) error {
 	if err != nil {
 		return err
 	}
-	_, err = bs.readResponse(request, false, "TOUCHED")
+	err = bs.readResponse(request, "TOUCHED")
 	return err
-}
-
-// Peek 从服务器获取指定作业的副本。
-// peek <id>\r\n  返回id对应的job
-// peek-ready\r\n 返回下一个ready job
-// peek-delayed\r\n 返回下一个延迟剩余时间最短的job
-// peek-buried\r\n 返回下一个在buried列表中的job
-func (bs *Beanstalk) Peek(id uint64) (body []byte, err error) {
-	request, err := bs.cmd("peek", id)
-	if err != nil {
-		return nil, err
-	}
-	return bs.readResponse(request, true, "FOUND %d", &id)
 }
 
 // Stats 返回整个消息队列系统的整体信息
@@ -74,7 +107,7 @@ func (bs *Beanstalk) Stats() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := bs.readResponse(request, true, "OK")
+	body, err := bs.readBody(request, "OK")
 	return parseDict(body), err
 }
 
@@ -84,7 +117,7 @@ func (bs *Beanstalk) StatsJob(id uint64) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := bs.readResponse(request, true, "OK")
+	body, err := bs.readBody(request, "OK")
 	return parseDict(body), err
 }
 
@@ -94,56 +127,76 @@ func (bs *Beanstalk) ListTubes() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := bs.readResponse(request, true, "OK")
+	body, err := bs.readBody(request, "OK")
 	return parseList(body), err
 }
 
-// Put 插入一个job到队列
-func (bs *Beanstalk) Put(body []byte, pri uint32, delay, ttr int) (id uint64, err error) {
-	request, err := bs.cmdPut("put", body, pri, strconv.Itoa(delay), strconv.Itoa(ttr))
+// ListTubes 列出所有存在的tube
+func (bs *Beanstalk) ListTubeUsed() (string, error) {
+	request, err := bs.cmd("list-tube-used")
 	if err != nil {
-		return 0, err
+		return "", err
 	}
-	_, err = bs.readResponse(request, false, "INSERTED %d", &id)
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	body, err := bs.readBody(request, "USING")
+	return string(body), err
 }
 
-// PeekReady 返回下一个ready job
+// ListTubes 列出所有存在的tube
+func (bs *Beanstalk) ListTubeWatched() ([]string, error) {
+	request, err := bs.cmd("list-tubes-watched")
+	if err != nil {
+		return nil, err
+	}
+	body, err := bs.readBody(request, "OK")
+	return parseList(body), err
+}
+
+// Peek 从服务器获取指定作业的副本        peek <id>\r\n
+func (bs *Beanstalk) Peek(id uint64) (jobid uint64, body []byte, err error) {
+	request, err := bs.cmd("peek", id)
+	if err != nil {
+		return 0, nil, err
+	}
+	body, err = bs.readBody(request, "FOUND %d", &jobid)
+	if err != nil {
+		return 0, nil, err
+	}
+	return jobid, body, nil
+}
+
+// PeekReady 返回下一个ready job                peek-ready\r\n
 func (bs *Beanstalk) PeekReady() (id uint64, body []byte, err error) {
 	request, err := bs.cmd("peek-ready")
 	if err != nil {
 		return 0, nil, err
 	}
-	body, err = bs.readResponse(request, true, "FOUND %d", &id)
+	body, err = bs.readBody(request, "FOUND %d", &id)
 	if err != nil {
 		return 0, nil, err
 	}
 	return id, body, nil
 }
 
-// PeekDelayed 返回下一个延迟剩余时间最短的job
+// PeekDelayed 返回下一个延迟剩余时间最短的job           peek-delayed\r\n
 func (bs *Beanstalk) PeekDelayed() (id uint64, body []byte, err error) {
 	request, err := bs.cmd("peek-delayed")
 	if err != nil {
 		return 0, nil, err
 	}
-	body, err = bs.readResponse(request, true, "FOUND %d", &id)
+	body, err = bs.readBody(request, "FOUND %d", &id)
 	if err != nil {
 		return 0, nil, err
 	}
 	return id, body, nil
 }
 
-// PeekBuried 返回下一个在buried列表中的job
+// PeekBuried 返回下一个在buried列表中的job        peek-buried\r\n
 func (bs *Beanstalk) PeekBuried() (id uint64, body []byte, err error) {
 	request, err := bs.cmd("peek-buried")
 	if err != nil {
 		return 0, nil, err
 	}
-	body, err = bs.readResponse(request, true, "FOUND %d", &id)
+	body, err = bs.readBody(request, "FOUND %d", &id)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -151,12 +204,12 @@ func (bs *Beanstalk) PeekBuried() (id uint64, body []byte, err error) {
 }
 
 // Kick 此指令应用在当前使用的tube中，它将job的状态迁移为ready或者delayed
-func (bs *Beanstalk) Kick(bound int) (n int, err error) {
+func (bs *Beanstalk) Kick(bound int) (n int64, err error) {
 	request, err := bs.cmd("kick", bound)
 	if err != nil {
 		return 0, err
 	}
-	_, err = bs.readResponse(request, false, "KICKED %d", &n)
+	err = bs.readResponse(request, "KICKED %d", &n)
 	if err != nil {
 		return 0, err
 	}
@@ -169,17 +222,17 @@ func (bs *Beanstalk) StatsTube(tube string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := bs.readResponse(request, true, "OK")
+	body, err := bs.readBody(request, "OK")
 	return parseDict(body), err
 }
 
 // Pause 暂停任务一段时间
-func (bs *Beanstalk) PauseTube(tube string, d time.Duration) error {
-	request, err := bs.cmd("pause-tube", tube, time.Duration(d))
+func (bs *Beanstalk) PauseTube(tube string, delay int) error {
+	request, err := bs.cmd("pause-tube", tube, delay)
 	if err != nil {
 		return err
 	}
-	_, err = bs.readResponse(request, false, "PAUSED")
+	err = bs.readResponse(request, "PAUSED")
 	if err != nil {
 		return err
 	}
@@ -189,14 +242,23 @@ func (bs *Beanstalk) PauseTube(tube string, d time.Duration) error {
 // Reserve 取出（预订）job，待处理。
 // 它将返回一个新预订的job，如果没有job，beanstalkd将直到有job时才发送响应。
 // 取出job时，状态迁移为reserved, client被限制在指定的ttr时间内完成，否则超时，状态迁移为ready。
-func (bs *Beanstalk) Reserve(timeout time.Duration) (id uint64, body []byte, err error) {
-	request, err := bs.cmd("reserve-with-timeout", time.Duration(timeout))
+func (bs *Beanstalk) Reserve(timeout int) (id uint64, body []byte, err error) {
+	request, err := bs.cmd("reserve-with-timeout", timeout)
 	if err != nil {
 		return 0, nil, err
 	}
-	body, err = bs.readResponse(request, true, "RESERVED %d", &id)
+	body, err = bs.readBody(request, "RESERVED %d", &id)
 	if err != nil {
 		return 0, nil, err
 	}
 	return id, body, nil
+}
+
+func (bs *Beanstalk) Quit() error {
+	request, err := bs.cmd("quit")
+	if err != nil {
+		return err
+	}
+	err = bs.readResponse(request, "quit")
+	return err
 }

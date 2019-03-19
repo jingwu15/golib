@@ -5,15 +5,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func (e NameError) Error() string {
 	return e.Err.Error() + ": " + e.Name
-}
-
-func DurationToStr(d time.Duration) string {
-	return strconv.FormatInt(int64(time.Duration(d)/time.Second), 10)
 }
 
 func checkName(s string) error {
