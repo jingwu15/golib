@@ -60,6 +60,14 @@ func (bs *Beanstalk) Put(body []byte, pri uint32, delay, ttr int) (id uint64, er
 	return id, nil
 }
 
+func (bs *Beanstalk) UsePut(tube string, body []byte, pri uint32, delay, ttr int) (id uint64, err error) {
+	err = bs.Use(tube)
+	if err != nil {
+		return 0, err
+	}
+	return bs.Put(body, pri, delay, ttr)
+}
+
 // Delete 删除任务
 func (bs *Beanstalk) Delete(id uint64) error {
 	request, err := bs.cmd("delete", id)
@@ -68,6 +76,14 @@ func (bs *Beanstalk) Delete(id uint64) error {
 	}
 	err = bs.readResponse(request, "DELETED")
 	return err
+}
+
+func (bs *Beanstalk) UseDelete(tube string, id uint64) error {
+	err := bs.Use(tube)
+	if err != nil {
+		return err
+	}
+	return bs.Delete(id)
 }
 
 //Release 命令, 执行以下操作：
@@ -80,6 +96,13 @@ func (bs *Beanstalk) Release(id uint64, pri uint32, delay int) error {
 	err = bs.readResponse(request, "RELEASED")
 	return err
 }
+func (bs *Beanstalk) UseRelease(tube string, id uint64, pri uint32, delay int) error {
+	err := bs.Use(tube)
+	if err != nil {
+		return err
+	}
+	return bs.Release(id, pri, delay)
+}
 
 // Bury 将任务状态设置为BURIED，并设置优先级。BURIED状态在未改变前，不会被消费
 func (bs *Beanstalk) Bury(id uint64, pri uint32) error {
@@ -91,6 +114,14 @@ func (bs *Beanstalk) Bury(id uint64, pri uint32) error {
 	return err
 }
 
+func (bs *Beanstalk) UseBury(tube string, id uint64, pri uint32) error {
+	err := bs.Use(tube)
+	if err != nil {
+		return err
+	}
+	return bs.Bury(id, pri)
+}
+
 // Touch 允许worker请求更多的时间执行job，这个对长时间执行的任务有用
 func (bs *Beanstalk) Touch(id uint64) error {
 	request, err := bs.cmd("touch", id)
@@ -99,6 +130,15 @@ func (bs *Beanstalk) Touch(id uint64) error {
 	}
 	err = bs.readResponse(request, "TOUCHED")
 	return err
+}
+
+// UseTouch 切换tube, 并允许worker请求更多的时间执行job，这个对长时间执行的任务有用
+func (bs *Beanstalk) UseTouch(tube string, id uint64) error {
+	err := bs.Use(tube)
+	if err != nil {
+		return err
+	}
+	return bs.Touch(id)
 }
 
 // Stats 返回整个消息队列系统的整体信息
@@ -121,6 +161,15 @@ func (bs *Beanstalk) StatsJob(id uint64) (map[string]string, error) {
 	return parseDict(body), err
 }
 
+// UseStatsJob 切换tube, 并统计job状态
+func (bs *Beanstalk) UseStatsJob(tube string, id uint64) (map[string]string, error) {
+    err := bs.Use(tube)
+	if err != nil {
+		return nil, err
+	}
+	return bs.StatsJob(id)
+}
+
 // ListTubes 列出所有存在的tube
 func (bs *Beanstalk) ListTubes() ([]string, error) {
 	request, err := bs.cmd("list-tubes")
@@ -131,7 +180,7 @@ func (bs *Beanstalk) ListTubes() ([]string, error) {
 	return parseList(body), err
 }
 
-// ListTubes 列出所有存在的tube
+// ListTubeUsed 列出当前在使用的 tube
 func (bs *Beanstalk) ListTubeUsed() (tube string, err error) {
 	request, err := bs.cmd("list-tube-used")
 	if err != nil {
@@ -164,6 +213,14 @@ func (bs *Beanstalk) Peek(id uint64) (jobid uint64, body []byte, err error) {
 	return jobid, body, nil
 }
 
+func (bs *Beanstalk) UsePeek(tube string, id uint64) (jobid uint64, body []byte, err error) {
+	err = bs.Use(tube)
+	if err != nil {
+		return 0, nil, err
+	}
+	return bs.Peek(id)
+}
+
 // PeekReady 返回下一个ready job                peek-ready\r\n
 func (bs *Beanstalk) PeekReady() (id uint64, body []byte, err error) {
 	request, err := bs.cmd("peek-ready")
@@ -175,6 +232,14 @@ func (bs *Beanstalk) PeekReady() (id uint64, body []byte, err error) {
 		return 0, nil, err
 	}
 	return id, body, nil
+}
+
+func (bs *Beanstalk) UsePeekReady(tube string) (id uint64, body []byte, err error) {
+	err = bs.Use(tube)
+	if err != nil {
+		return 0, nil, err
+	}
+	return bs.PeekReady()
 }
 
 // PeekDelayed 返回下一个延迟剩余时间最短的job           peek-delayed\r\n
@@ -190,6 +255,14 @@ func (bs *Beanstalk) PeekDelayed() (id uint64, body []byte, err error) {
 	return id, body, nil
 }
 
+func (bs *Beanstalk) UsePeekDelayed(tube string) (id uint64, body []byte, err error) {
+	err = bs.Use(tube)
+	if err != nil {
+		return 0, nil, err
+	}
+	return bs.PeekDelayed()
+}
+
 // PeekBuried 返回下一个在buried列表中的job        peek-buried\r\n
 func (bs *Beanstalk) PeekBuried() (id uint64, body []byte, err error) {
 	request, err := bs.cmd("peek-buried")
@@ -203,6 +276,14 @@ func (bs *Beanstalk) PeekBuried() (id uint64, body []byte, err error) {
 	return id, body, nil
 }
 
+func (bs *Beanstalk) UsePeekBuried(tube string) (id uint64, body []byte, err error) {
+	err = bs.Use(tube)
+	if err != nil {
+		return 0, nil, err
+	}
+	return bs.PeekBuried()
+}
+
 // Kick 此指令应用在当前使用的tube中，它将job的状态迁移为ready或者delayed
 func (bs *Beanstalk) Kick(bound int) (n int64, err error) {
 	request, err := bs.cmd("kick", bound)
@@ -214,6 +295,14 @@ func (bs *Beanstalk) Kick(bound int) (n int64, err error) {
 		return 0, err
 	}
 	return n, nil
+}
+
+func (bs *Beanstalk) UseKick(tube string, bound int) (n int64, err error) {
+	err = bs.Use(tube)
+	if err != nil {
+		return 0, err
+	}
+	return bs.Kick(bound)
 }
 
 // Stats 统计tube的相关信息

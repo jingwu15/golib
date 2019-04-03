@@ -57,6 +57,7 @@ func FormatCrontab(sched []string) map[string]string {
 
 //SchedArr 规则时间
 func (c Sched) CalcNextTime(SchedArr map[string]string) string{
+    var nextSecond, nextMinute, nextHour, nextDay, nextWeek, nextMonth, nextYear int
     current := c.Current
 	currentYear	    := current.Year()		    //年
 	currentMonth	:= current.Month()		    //月
@@ -65,35 +66,56 @@ func (c Sched) CalcNextTime(SchedArr map[string]string) string{
 	currentHour	    := current.Hour()		    //时
 	currentMinute	:= current.Minute()		    //分
 	currentSecond   := current.Second()		    //预留
-	nextYear	    := current.Year()		    //年
+    //nextYear	    := current.Year()		    //年
 
-	//月
-	nextMonth := c.CalcNextMonth(SchedArr["month"])
-	if nextMonth < currentMonth && nextYear == currentYear {
-		nextYear = currentYear + 1
-	}
-	//周
-	nextWeek := c.CalcNextWeek(SchedArr["week"])
-	//日
-	nextDay  := c.CalcNextDay(SchedArr["day"])
-	if nextDay < currentDay && nextMonth == currentMonth {
-		nextMonth = nextMonth + 1
-	}
-	//时
-	nextHour := c.CalcNextHour(SchedArr["hour"])
-	if nextHour < currentHour && nextDay == currentDay {
-		nextDay = nextDay + 1
-	}
-	//分
-	nextMinute := c.CalcNextMinute(SchedArr["minute"])
-	if nextMinute < currentMinute && nextHour == currentHour {
-		nextHour = nextHour + 1
-	}
-	//秒
-	nextSecond := c.CalcNextSecond(SchedArr["second"])
-	if nextSecond < currentSecond && nextMinute == currentMinute {
-		nextMinute = nextMinute + 1
-	}
+    timeMap := map[string][]int{
+        "year":   []int{current.Year(), current.Year() + 1},
+        "month":  []int{},
+        "week":   []int{},
+        "day":    []int{},
+        "hour":   []int{},
+        "minute": []int{},
+        "second": []int{},
+    }
+
+	timeMap["month"] = c.CalcNextMonth(SchedArr["month"])      //月
+	timeMap["week"] = c.CalcNextWeek(SchedArr["week"])         //周
+	timeMap["day"]  = c.CalcNextDay(SchedArr["day"])           //日
+	timeMap["hour"] = c.CalcNextHour(SchedArr["hour"])         //时
+	timeMap["minute"] = c.CalcNextMinute(SchedArr["minute"])   //分
+	timeMap["second"] = c.CalcNextSecond(SchedArr["second"])   //秒
+    nextSecond = timeMap["second"][0]
+
+	if nextSecond < currentSecond && timeMap["minute"][0] == currentMinute {
+		nextMinute = timeMap["minute"][1]
+        timeMap["hour"] = ResetTimeIntArr(timeMap["minute"], timeMap["hour"])
+    } else {
+		nextMinute = timeMap["minute"][0]
+    }
+	if nextMinute < currentMinute && timeMap["hour"][0] == currentHour {
+		nextHour = timeMap["hour"][1]
+        timeMap["day"] = ResetTimeIntArr(timeMap["hour"], timeMap["day"])
+    } else {
+		nextHour = timeMap["hour"][0]
+    }
+	if nextHour < currentHour && timeMap["day"][0] == currentDay {
+		nextDay = timeMap["day"][1]
+        timeMap["month"] = ResetTimeIntArr(timeMap["day"], timeMap["month"])
+    } else {
+		nextDay = timeMap["day"][0]
+    }
+	if nextDay < currentDay && timeMap["month"][0] == currentMonth {
+		nextMonth = timeMap["month"][1]
+        timeMap["year"] = ResetTimeIntArr(timeMap["month"], timeMap["year"])
+    } else {
+		nextMonth = timeMap["month"][0]
+    }
+	if nextMonth < currentMonth && timeMap["year"][0] == currentYear {
+		nextYear = timeMap["year"][1]
+    } else {
+		nextYear = timeMap["year"][0]
+    }
+	nextWeek = timeMap["week"][0]
 
 	//差额天
 	diffDay := 0
@@ -115,95 +137,138 @@ func (c Sched) CalcNextTime(SchedArr map[string]string) string{
 }
 
 //月处理
-func (c Sched) CalcNextMonth(month string) int {
+func (c Sched) CalcNextMonth(month string) []int {
 	rows := CalcUse(month, 1, 12)
 	currentMonth := c.Current.Month()		//月
 	if len(rows) == 0 {
-		return currentMonth
+		return []int{currentMonth, currentMonth}
 	}
 	used := FilterMin(rows,currentMonth)
-	res := rows[0]
-	if len(used) > 0 {
-		res = used[0]
-	}
-	return res
+    //保证至少有两个值, 如果未取到值，则取第一个值
+	if len(used) == 0 {
+	    used = append(used,rows[0])
+    }
+	if len(used) == 1 {
+	    used = append(used,rows[0])
+    }
+    return used
+	//res := rows[0]
+	//if len(used) > 0 {
+	//	res = used[0]
+	//}
+	//return res
 }
 
 //周处理
-func (c Sched) CalcNextWeek(schedWeek string) int {
+func (c Sched) CalcNextWeek(schedWeek string) []int {
 	rows := CalcUse(schedWeek, 0, 6)
-	currentMonth := c.Current.WeekInt(0)    //周
+	currentWeek := c.Current.WeekInt(0)    //周
 	if len(rows) == 0 {
-		return currentMonth
+		return []int{currentWeek, currentWeek}
 	}
-	used := FilterMin(rows,currentMonth)
-	res := rows[0]
-	if len(used) > 0 {
-		res = used[0]
-	}
-	return res
+	used := FilterMin(rows,currentWeek)
+    //保证至少有两个值, 如果未取到值，则取第一个值
+	if len(used) == 0 {
+	    used = append(used,rows[0])
+    }
+	if len(used) == 1 {
+	    used = append(used,rows[0])
+    }
+    return used
 }
 
 
 //天处理
-func (c Sched) CalcNextDay(scheday string) int {
+func (c Sched) CalcNextDay(scheday string) []int {
 	currentDay	:= c.Current.Day()		//日
     monthDayMap := map[int]int{1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
 	rows        := CalcUse(scheday,1, monthDayMap[c.Current.Month()])
 	if len(rows) == 0 {
-		return currentDay
+		return []int{currentDay, currentDay}
 	}
 	used := FilterMin(rows,currentDay)
-	res := rows[0]
-	if len(used) > 0 {
-		res = used[0]
-	}
-	return res
+    //保证至少有两个值, 如果未取到值，则取第一个值
+	if len(used) == 0 {
+	    used = append(used,rows[0])
+    }
+	if len(used) == 1 {
+	    used = append(used,rows[0])
+    }
+    return used
+	//res := rows[0]
+	//if len(used) > 0 {
+	//	res = used[0]
+	//}
+	//return res
 }
 
 //时处理
-func (c Sched) CalcNextHour(scheHour string) int {
+func (c Sched) CalcNextHour(scheHour string) []int {
 	currentHour	:= c.Current.Hour()		//时
 	rows := CalcUse(scheHour, 0, 23)
 	if len(rows) == 0 {
-		return currentHour
+		return []int{currentHour, currentHour}
 	}
 	used := FilterMin(rows, currentHour)
-	res := rows[0]
-	if len(used) > 0{
-		res = used[0]
-	}
-	return res
+    //保证至少有两个值, 如果未取到值，则取第一个值
+	if len(used) == 0 {
+	    used = append(used,rows[0])
+    }
+	if len(used) == 1 {
+	    used = append(used,rows[0])
+    }
+    return used
+	//res := rows[0]
+	//if len(used) > 0{
+	//	res = used[0]
+	//}
+	//return res
 }
 
 //分处理
-func (c Sched) CalcNextMinute(scheMinute string) int {
+func (c Sched) CalcNextMinute(scheMinute string) []int {
 	currentMinute	:= c.Current.Minute()			//分
 	rows := CalcUse(scheMinute, 0, 59)
 	if len(rows) == 0 {
-		return currentMinute
+		return []int{currentMinute, currentMinute}
 	}
 	used := FilterMin(rows,currentMinute)
-	res := rows[0]
-	if len(used) > 0{
-		res = used[0]
-	}
-	return res
+    //保证至少有两个值, 如果未取到值，则取第一个值
+	if len(used) == 0 {
+	    used = append(used,rows[0])
+    }
+	if len(used) == 1 {
+	    used = append(used,rows[0])
+    }
+    return used
+	//res := rows[0]
+	//if len(used) > 0{
+	//	res = used[0]
+	//}
+	//return res
 }
 
 //秒处理
-func (c Sched) CalcNextSecond(scheSecond string) int {
+func (c Sched) CalcNextSecond(scheSecond string) []int {
 	currentSecond	:= c.Current.Second()			//分
 	rows := CalcUse(scheSecond, 0, 59)
 	if len(rows) == 0 {
-		return currentSecond
+		return []int{currentSecond, currentSecond}
 	}
 	used := FilterMin(rows,currentSecond)
-	res := rows[0]
-	if len(used) > 0 {
-		res = used[0]
-	}
-	return res
+    //保证至少有两个值, 如果未取到值，则取第一个值
+	if len(used) == 0 {
+	    used = append(used,rows[0])
+    }
+	if len(used) == 1 {
+	    used = append(used,rows[0])
+    }
+    return used
+	//res := rows[0]
+	//if len(used) > 0 {
+	//	res = used[0]
+	//}
+	//return res
 }
 
 func CalcUse(schedValue string, start int, end int) []int{
@@ -229,6 +294,7 @@ func CalcUse(schedValue string, start int, end int) []int{
         }
     }
 
+    //1-6
     result, _ = regexp.MatchString(`^\d{1,4}-\d{1,4}$`, schedValue)
     if result {
         rows := strings.Split(schedValue,"-")
@@ -241,6 +307,7 @@ func CalcUse(schedValue string, start int, end int) []int{
         }
     }
 
+    // */30
     result, _ = regexp.MatchString(`^*/[1-9]\d{0,4}$`, schedValue)
     if result {
 		tmp := schedValue[2:len(schedValue)]
@@ -253,17 +320,29 @@ func CalcUse(schedValue string, start int, end int) []int{
             }
         }
     }
+    if schedValue == "*" {
+	    for i:= start; i<=end; i++ {
+	        uses = append(uses, i)
+        }
+    }
 
 	return uses
 }
 
-func FilterMin(rows []int,currentMonth int) []int{
+func FilterMin(rows []int, current int) []int{
 	arr := []int{}
-	for i:=0; i<len(rows)-1;i++ {
-		if rows[i] > currentMonth {
+	for i:=0; i<len(rows);i++ {
+		if rows[i] >= current {
 			arr = append(arr,rows[i])
 		}
 	}
 	return arr
 }
 
+func ResetTimeIntArr(items1, items2 []int) []int {
+    if items1[1] < items1[0] {
+        items2 = append(items2, items2[0])
+        items2 = items2[1:]
+    }
+    return items2
+}

@@ -31,6 +31,10 @@ func main() {
 	//	jobid, err := bs.Put([]byte(fmt.Sprintf("tester----%04d", i)), 1, 0, 30)
 	//	fmt.Println("cmd-put", jobid, err)
 	//}
+	//for i := 0; i < 1000; i++ {
+	//	jobid, err := bs.UsePut(tube, []byte(fmt.Sprintf("tester----%04d", i)), 1, 0, 30)
+	//	fmt.Println("cmd-useput", jobid, err)
+	//}
 
 	count, err := bs.Watch(tube)
 	fmt.Println("cmd-watch", tube, count, err)
