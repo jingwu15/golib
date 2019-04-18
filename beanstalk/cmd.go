@@ -20,6 +20,15 @@ import (
 //cmd-list-butes-watched 总共执行list-tubes-watched指令的次数
 //cmd-pause-tube 总共执行pause-tube指令的次数
 
+//Use 切换到指定的tube
+//  bs, err := New("127.0.0.1:11300")
+//  if err != nil {
+//    fmt.Println(err)
+//  }
+//  err = bs.Use(tube)
+//  if err != nil {
+//    fmt.Println(err)
+//  }
 func (bs *Beanstalk) Use(tube string) error {
 	request, err := bs.cmd("use", tube)
 	if err != nil {
@@ -29,6 +38,8 @@ func (bs *Beanstalk) Use(tube string) error {
 	return err
 }
 
+//Watch 监控给定的tube
+//同时监控多个tube, 多次调用即可
 func (bs *Beanstalk) Watch(tube string) (count int64, err error) {
 	request, err := bs.cmd("watch", tube)
 	if err != nil {
@@ -38,6 +49,8 @@ func (bs *Beanstalk) Watch(tube string) (count int64, err error) {
 	return count, err
 }
 
+//Ignore 忽略指定的tube
+//必须添加过监控
 func (bs *Beanstalk) Ignore(tube string) (count int64, err error) {
 	request, err := bs.cmd("ignore", tube)
 	if err != nil {
@@ -60,6 +73,8 @@ func (bs *Beanstalk) Put(body []byte, pri uint32, delay, ttr int) (id uint64, er
 	return id, nil
 }
 
+//UsePut 切换到指定的tube, 并添加Job
+//相当于 Use + Put 命令
 func (bs *Beanstalk) UsePut(tube string, body []byte, pri uint32, delay, ttr int) (id uint64, err error) {
 	err = bs.Use(tube)
 	if err != nil {

@@ -2,6 +2,7 @@ package json
 
 import (
 //	"fmt"
+    "encoding/json"
 	"github.com/json-iterator/go"
 	jparse "github.com/buger/jsonparser"
 )
@@ -12,6 +13,10 @@ type ValueType = jparse.ValueType
 
 func Marshal(v interface{}) ([]byte, error) {
 	return jsonN.Marshal(v)
+}
+
+func MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+	return json.MarshalIndent(v, prefix, indent)
 }
 
 func Unmarshal(data []byte, v interface{}) error {
