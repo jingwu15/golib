@@ -2,6 +2,7 @@ package json
 
 import (
 //	"fmt"
+    "bytes"
     "encoding/json"
 	"github.com/json-iterator/go"
 	jparse "github.com/buger/jsonparser"
@@ -12,11 +13,27 @@ var jsonN = jsoniter.ConfigCompatibleWithStandardLibrary
 type ValueType = jparse.ValueType
 
 func Marshal(v interface{}) ([]byte, error) {
-	return jsonN.Marshal(v)
+    //处理html反转义问题
+    bf := bytes.NewBuffer([]byte{})
+    jsonEncoder := jsonN.NewEncoder(bf)
+    jsonEncoder.SetEscapeHTML(false)
+    err := jsonEncoder.Encode(v)
+    return bf.Bytes(), err
+
+	//return jsonN.Marshal(v)
 }
 
 func MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
-	return json.MarshalIndent(v, prefix, indent)
+    raw, err := Marshal(v)
+    if err != nil {
+        return nil, err
+    }
+    var buf bytes.Buffer
+	err = json.Indent(&buf, raw, prefix, indent)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func Unmarshal(data []byte, v interface{}) error {
@@ -24,7 +41,12 @@ func Unmarshal(data []byte, v interface{}) error {
 }
 
 func Encode(v interface{}) ([]byte, error) {
-	return jsonN.Marshal(v)
+    return Marshal(v)
+	//return jsonN.Marshal(v)
+}
+
+func EncodeIndent(v interface{}, prefix, indent string) ([]byte, error) {
+    return MarshalIndent(v, prefix, indent)
 }
 
 func Decode(data []byte, v interface{}) error {
