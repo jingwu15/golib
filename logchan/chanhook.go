@@ -6,20 +6,19 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
-
-var writeDelay string = "0"
-
-var cutTypes = map[string]string{"day": "1", "month": "1", "hour": "1"}
-var logCutType = "" //     day/month/hour
-var logFilePs = make(map[string]*os.File)
-var logFiles = make(map[string][]string)
-var levelFileMap = make(map[string][]string)
 
 type LogChanHook struct {
 }
 
+var writeDelay string = "0"
+var cutTypes = map[string]string{"day": "1", "month": "1", "hour": "1"}
+var logCutType = "" //day/month/hour
+var logFilePs = sync.Map{}
+var logFiles = make(map[string][]string)
+var levelFileMap = make(map[string][]string)
 var logChan = make(chan string, 1000000)
 
 func LogFormatLevel(level interface{}) string {
@@ -116,12 +115,12 @@ func GetLogFile(logfile string, timeStr string) string {
 	} else {
 		logfilekey = logfile
 	}
-	if _, ok := logFilePs[logfilekey]; !ok {
+	if _, ok := logFilePs.Load(logfilekey); !ok {
 		fh, err := os.OpenFile(logfilekey, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			panic(err)
 		}
-		logFilePs[logfilekey] = fh
+		logFilePs.Store(logfilekey, fh)
 	}
 	return logfilekey
 }
@@ -131,12 +130,12 @@ func LogWrite() {
 	var limit, i int
 	var line string
 	var ok bool
-    limitClose := 0
+	limitClose := 0
 	for {
-        if limitClose > 100 {
-            LogClose()
-            limitClose = 0
-        }
+		if limitClose > 100 {
+			LogClose()
+			limitClose = 0
+		}
 		limit = len(logChan)
 		var bodys = make(map[string]*bytes.Buffer)
 		for i = 0; i < limit; i++ {
@@ -153,10 +152,11 @@ func LogWrite() {
 			}
 		}
 		for logfile, body := range bodys {
-			logFilePs[logfile].WriteString(body.String())
+			fp, _ := logFilePs.Load(logfile)
+			fp.(*os.File).WriteString(body.String())
 		}
 		time.Sleep(time.Second * time.Duration(delay))
-        limitClose++
+		limitClose++
 	}
 }
 
@@ -178,12 +178,14 @@ func LogClose() {
 		}
 	}
 	for logfile, body := range bodys {
-		logFilePs[logfile].WriteString(body.String())
+		fp, _ := logFilePs.Load(logfile)
+		fp.(*os.File).WriteString(body.String())
 	}
-	for fkey, fp := range logFilePs {
-		fp.Close()
-        delete(logFilePs, fkey)
-	}
+	logFilePs.Range(func(k, fp interface{}) bool {
+		fp.(*os.File).Close()
+		logFilePs.Delete(k)
+		return true
+	})
 }
 
 func (hook *LogChanHook) Levels() []logrus.Level {

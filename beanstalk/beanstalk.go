@@ -17,6 +17,10 @@ var (
 	nl         = []byte{'\n'}
 	colonSpace = []byte{':', ' '}
 	minusSpace = []byte{'-', ' '}
+	//默认的级别，延时，生存时间
+	BS_PRI   uint32 = 1024
+	BS_DELAY int    = 0
+	BS_TTR   int    = 30
 	//名称格式错误。NameError的err字段包含其中一个
 	ErrEmpty      = errors.New("name is empty")
 	ErrBadChar    = errors.New("name has bad char") // 有非法字符

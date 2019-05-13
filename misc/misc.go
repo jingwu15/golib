@@ -1,14 +1,14 @@
 package misc
 
 import (
-	"os"
-	"time"
-	"sync"
-	"reflect"
-	"math/rand"
 	"crypto/md5"
 	"encoding/hex"
 	log "github.com/sirupsen/logrus"
+	"math/rand"
+	"os"
+	"reflect"
+	"sync"
+	"time"
 )
 
 func GetRandNum(num int) int {
@@ -42,6 +42,19 @@ func KeysMapInt64(dataMap map[string]int64) []string {
 	}
 
 	return keys
+}
+
+func IntsToMap(ints []int) map[int]int {
+	var mapInt = map[int]int{}
+	for _, i := range ints {
+		mapInt[i] = 1
+	}
+	return mapInt
+}
+
+func MapKeyExist(mapInt map[int]int, key int) bool {
+	_, ok := mapInt[key]
+	return ok
 }
 
 func SelectIp(ips [][]byte, limit int) []string {
@@ -128,7 +141,7 @@ func IsEmpty(a interface{}) bool {
  * var record = Record{City: []byte(`ss`)}
  * _ = SetValue(reflect.ValueOf(&record), "City", []byte(`hello world`))
  * fmt.Println(record)
-*/
+ */
 //func SetValue(rVal reflect.Value, field string, val interface{}) error {
 //	//判断是否可以设置值
 //	if rVal.Kind() == reflect.Ptr && !rVal.Elem().CanSet() {
