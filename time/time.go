@@ -60,6 +60,22 @@ func (t Time) UnWrap() time.Time {
 	return t.Current
 }
 
+func Keep(keep int) time.Duration {
+	return time.Duration(keep) * time.Second
+}
+
+func KeepSecond(keep int) time.Duration {
+	return time.Duration(keep) * time.Second
+}
+
+func KeepMinute(keep int) time.Duration {
+	return time.Duration(keep) * time.Minute
+}
+
+func KeepHour(keep int) time.Duration {
+	return time.Duration(keep) * time.Hour
+}
+
 //获取当前时间
 func Now() Time {
 	return Time{
