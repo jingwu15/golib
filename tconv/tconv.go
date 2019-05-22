@@ -41,8 +41,24 @@ func Atoi(s string) (i int, err error) {
 	return strconv.Atoi(s)
 }
 
+func StrToInt(s string) (i int, err error) {
+	return strconv.Atoi(s)
+}
+
 func Itoa(i int) string {
 	return strconv.Itoa(i)
+}
+
+func IntToStr(i int) string {
+	return strconv.Itoa(i)
+}
+
+func IntsToStrs(rows []int) []string {
+    strs := []string{}
+    for _, row := range rows {
+        strs = append(strs, strconv.Itoa(row))
+    }
+	return strs
 }
 
 //将[][]byte 转为json列表,如：[][]byte{[]byte(`a`), []byte(`a`)} => ["a","b"]

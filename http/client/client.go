@@ -3,10 +3,8 @@ package client
 import (
 	"fmt"
 	"github.com/jingwu15/golib/time"
-	"github.com/satori/go.uuid"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -15,8 +13,6 @@ type Request struct {
 	Method  string            `json:"method"`
 	Body    string            `json:"body"`
 	Headers map[string]string `json:"headers"`
-	Uuid    string            `json:"uuid"` //请求的唯一标识符
-	Ext     map[string]string `json:"ext"`  //扩展数据
 }
 
 type Response struct {
@@ -56,8 +52,6 @@ func NewRequest() Request {
 		Url:     "",
 		Body:    "",
 		Headers: map[string]string{},
-		Uuid:    uuid.Must(uuid.NewV4()).String(),
-		Ext:     map[string]string{},
 	}
 }
 
@@ -68,25 +62,10 @@ func NewReqRess() ReqRess {
 			Url:     "",
 			Body:    "",
 			Headers: map[string]string{},
-			Uuid:    uuid.Must(uuid.NewV4()).String(),
-			Ext:     map[string]string{},
 		},
 		Times: 0,
 		Ress:  []Response{},
 	}
-}
-
-//根据url取得host
-func GetHostByUrl(raw string) string {
-	u, _ := url.Parse(raw)
-	return u.Host
-}
-
-//根据url取得host, 无端口
-func GetHostNoPortByUrl(raw string) string {
-	u, _ := url.Parse(raw)
-	tmp := strings.Split(u.Host, ":")
-	return tmp[0]
 }
 
 func HeadersToStr(headers map[string][]string) string {
@@ -113,18 +92,6 @@ func DoPost(url, reqBody string, headers map[string]string, timeout int) (httpco
 		return 0, "", map[string]string{}, err
 	}
 
-	//使用短连接
-	req.Close = true
-	req.Header.Set("Connection", "close")
-	//host设置比较不同
-	if host, ok := headers["Host"]; ok {
-		req.Host = host
-	}
-	if host, ok := headers["host"]; ok {
-		req.Host = host
-	}
-
-	//设用用户的自定义头
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}

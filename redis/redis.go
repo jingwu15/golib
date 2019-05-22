@@ -2,152 +2,272 @@ package redis
 
 import (
 	"fmt"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
+	"github.com/jingwu15/golib/tconv"
+	"github.com/jingwu15/golib/time"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
-var poolInit = 0
-var redisPool redis.Pool
+//常量
+const TIMEOUT_CONN int = 1
+const TIMEOUT_READ int = 1
+const TIMEOUT_WRITE int = 1
+const POOL_MAX_IDLE int = 16
+const POOL_MAX_ACTIVE int = 16
 
-//-------------------------------------普通K-V操作-------------------------------------------------
+//单个客户端连接
+type Client struct {
+	Conn redis.Conn
+	Addr string
+	Auth string
+}
 
-func Set(key string, value string) (int64, error) {
-	args := []interface{}{key, value}
-	result, err := redis_do("SET", args...)
-	if err == nil {
-		return redis.Int64(result, err)
+//单个连接池
+type Pool struct {
+	Pool      redis.Pool
+	Addr      string
+	Auth      string
+	MaxIdle   int
+	MaxActive int
+}
+
+//哨兵, 主从
+type Sentinel struct {
+	Master       string         //master name
+	Addrs        []string       //哨兵地址
+	CAddrs       map[string]int //当前正在连接的客户端          {"127.0.0.1:6379": 0}
+	Auth         string         //密码
+	TimeoutConn  int            //连接超时
+	TimeoutRead  int            //读取超提
+	TimeoutWrite int            //写入超时
+}
+
+//-------------------------------------连接相关的操作-------------------------------------------------
+
+func GetTimeout(cfg map[string]string) (timeoutC, timeoutR, timeoutW int) {
+	toc, tor, tow := TIMEOUT_CONN, TIMEOUT_READ, TIMEOUT_WRITE
+	if v, ok := cfg["timeout"]; ok {
+		to, _ := tconv.StrToInt(v)
+		toc, tor, tow = to, to, to
+	}
+	if v, ok := cfg["timeout_conn"]; ok {
+		toc, _ = tconv.StrToInt(v)
+	}
+	if v, ok := cfg["timeout_read"]; ok {
+		tor, _ = tconv.StrToInt(v)
+	}
+	if v, ok := cfg["timeout_write"]; ok {
+		tow, _ = tconv.StrToInt(v)
+	}
+	return toc, tor, tow
+}
+
+func GetPoolCfg(cfg map[string]int) map[string]int {
+	c := map[string]int{}
+	if v, ok := cfg["max_idle"]; ok {
+		c["max_idle"] = v
 	} else {
-		return 0, err
+		c["max_idle"] = POOL_MAX_IDLE
+	}
+	if v, ok := cfg["max_active"]; ok {
+		c["max_active"] = v
+	} else {
+		c["max_active"] = POOL_MAX_ACTIVE
+	}
+	return c
+}
+
+func New(cfg map[string]string) (client Client, err error) {
+	addr := fmt.Sprintf("%s:%s", cfg["host"], cfg["port"])
+	toc, tor, tow := GetTimeout(cfg)
+
+	c, err := redis.DialTimeout("tcp", addr, time.Keep(toc), time.Keep(tor), time.Keep(tow))
+	if err != nil {
+		return Client{Addr: addr}, err
+	} else {
+		c.Do("AUTH", cfg["auth"])
+		return Client{Conn: c, Addr: addr, Auth: cfg["auth"]}, nil
 	}
 }
 
-func Get(key string) ([]byte, error) {
-	var resp []byte
-	args := []interface{}{key}
-	result, err := redis_do("GET", args...)
-	if err == nil {
-		return redis.Bytes(result, err)
-	} else {
-		return resp, err
+func (c Client) Close() {
+	c.Conn.Close()
+}
+
+func NewPool(cfg map[string]string, cfgs ...map[string]int) Pool {
+	addr := fmt.Sprintf("%s:%s", cfg["host"], cfg["port"])
+	toc, tor, tow := GetTimeout(cfg)
+
+	opt := GetPoolCfg(cfgs[0])
+	redisPool := redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			conn, err := redis.DialTimeout("tcp", addr, time.Keep(toc), time.Keep(tor), time.Keep(tow))
+			if err != nil {
+				log.Error(fmt.Sprintf("redis connect error[%s]\n", err))
+			}
+			return conn, err
+		},
+		MaxIdle:   opt["max_idle"],
+		MaxActive: opt["max_active"],
 	}
+	return Pool{Pool: redisPool, Addr: addr, Auth: cfg["auth"]}
+}
+
+//从连接池中取一个连接
+func (p Pool) Get() Client {
+	c := p.Pool.Get()
+	c.Do("AUTH", p.Auth)
+	return Client{Conn: c, Addr: p.Addr, Auth: p.Auth}
+}
+
+//关闭连接池中
+func (p Pool) Close() {
+	p.Pool.Close()
+}
+
+//新建哨钱
+func NewSentinel(master string, items []map[string]string, cfgs ...map[string]interface{}) Sentinel {
+	addrs := []string{}
+	for _, row := range items {
+		addrs = append(addrs, fmt.Sprintf("%s:%s", row["host"], row["port"]))
+	}
+	s := Sentinel{Master: master, Addrs: addrs, Auth: "", TimeoutConn: TIMEOUT_CONN, TimeoutRead: TIMEOUT_READ, TimeoutWrite: TIMEOUT_WRITE}
+	if v, ok := cfgs[0]["auth"]; ok {
+		s.Auth = v.(string)
+	}
+	if v, ok := cfgs[0]["timeout_conn"]; ok {
+		s.TimeoutConn = v.(int)
+	}
+	if v, ok := cfgs[0]["timeout_read"]; ok {
+		s.TimeoutRead = v.(int)
+	}
+	if v, ok := cfgs[0]["timeout_write"]; ok {
+		s.TimeoutWrite = v.(int)
+	}
+	return s
+}
+
+//哨兵取一个连接，未来实现轮询，权重，Hash方式
+func (s Sentinel) Get() (Client, error) {
+	var err error
+	cinfo := []string{}
+	for _, addr := range s.Addrs {
+		conn, err := redis.DialTimeout("tcp", addr, time.Keep(s.TimeoutConn), time.Keep(s.TimeoutRead), time.Keep(s.TimeoutWrite))
+		if err == nil {
+			cinfo, err = redis.Strings(conn.Do("SENTINEL", "get-master-addr-by-name", s.Master))
+			if err == nil {
+				break
+			} else {
+				fmt.Println("cinfo------fail", err, cinfo)
+			}
+		}
+	}
+	if err != nil {
+		return Client{}, fmt.Errorf("redigo: no sentinels available, error: %s", err.Error())
+	}
+	addr := fmt.Sprintf("%s:%s", cinfo[0], cinfo[1])
+	c, err := redis.DialTimeout("tcp", addr, time.Keep(s.TimeoutConn), time.Keep(s.TimeoutRead), time.Keep(s.TimeoutWrite))
+	if err != nil {
+		return Client{}, err
+	}
+	if s.Auth != "" {
+		c.Do("AUTH", s.Auth)
+	}
+	return Client{Conn: c, Addr: addr}, nil
+}
+
+////哨兵取一个连接池, 未来实现轮询，权重，Hash方式，暂不实现
+//func (s Sentinel) GetPool() (Pool, error) {
+//}
+
+//-------------------------------------普通K-V操作-------------------------------------------------
+func (c Client) Set(key string, value string) (string, error) {
+	//r, e := c.do("SET", key, value)
+	//fmt.Println("----------set-start--------------")
+	//fmt.Println(r)
+	//fmt.Println(e)
+	//fmt.Println("----------set-end---------------")
+	//return FString(r, e)
+	return FStr(c.do("SET", key, value))
+}
+
+func (c Client) Get(key string) (string, error) {
+	return FStr(c.do("GET", key))
 }
 
 //-------------------------------------Hash(哈希表)操作-------------------------------------------------
-
-func Hset(key string, hkey string, value string) (int64, error) {
-	args := []interface{}{key, hkey, value}
-	result, err := redis_do("HSET", args...)
-	if err == nil {
-		return redis.Int64(result, err)
-	} else {
-		return 0, err
-	}
+func (c Client) Hset(key string, hkey string, value string) (int, error) {
+	return FInt(c.do("HSET", key, hkey, value))
 }
 
-func Hgetall(key string) (map[string]string, error) {
-	args := []interface{}{key}
-	result, err := redis_do("HGETALL", args...)
-	if err == nil {
-		return redis.StringMap(result, err)
-	} else {
-		return map[string]string{}, err
-	}
+func (c Client) Hgetall(key string) (map[string]string, error) {
+	return FMapStrStr(c.do("HGETALL", key))
 }
 
-func Hget(key string, hkey string) ([]byte, error) {
-	var resp []byte
-	args := []interface{}{key, hkey}
-	result, err := redis_do("HGET", args...)
-	if err == nil {
-		return redis.Bytes(result, err)
-	} else {
-		return resp, err
-	}
+func (c Client) Hget(key string, hkey string) ([]byte, error) {
+	result, err := c.do("HGET", key, hkey)
+	return FBytes(result, err)
 }
 
 //------------------------------------------------List(列表)操作-----------------------------------
-
-func Lindex(key string, index string) ([]byte, error) {
-	var resp []byte
-	args := []interface{}{key, index}
-	result, err := redis_do("LINDEX", args...) 
-	if err == nil {
-		return redis.Bytes(result, err)
-	} else {
-		return resp, err
-	}
+func (c Client) Lindex(key string, index string) ([]byte, error) {
+	return FBytes(c.do("LINDEX", key, index))
 }
 
-func Llen(key string) (int64, error) {
-	args := []interface{}{key}
-	result, err := redis_do("LLEN", args...)
-	if err == nil {
-		return redis.Int64(result, err)
-	} else {
-		return 0, err
-	}
+func (c Client) Llen(key string) (int, error) {
+	return FInt(c.do("LLEN", key))
 }
 
-func Lpop(key string) ([]byte, error) {
-	var resp []byte
-	args := []interface{}{key}
-	result, err := redis_do("LPOP", args...)
-	if err == nil {
-		return redis.Bytes(result, err)
-	} else {
-		return resp, err
-	}
+func (c Client) Lpop(key string) ([]byte, error) {
+	return FBytes(c.do("LPOP", key))
 }
 
-func Rpush(key string, values ...string) ([]byte, error) {
-	var resp []byte
-	args := []interface{}{key}
-	for _,v := range values {
-		args = append(args, v)
-	}
-	result, err := redis_do("RPUSH", args...)
-	if err == nil {
-		return redis.Bytes(result, err)
-	} else {
-		return resp, err
-	}
+func (c Client) Rpush(key string, values ...string) ([]byte, error) {
+	//var resp []byte
+	//args := []interface{}{key}
+	//for _,v := range values {
+	//	args = append(args, v)
+	//}
+	result, err := c.do("RPUSH", values)
+	return FBytes(result, err)
 }
 
 //-----------------------------------------redis连接封-----------------------------------------------
 
-func redis_do(cmd string, args ...interface{}) (result interface{}, err error) {
-	client := GetClient().Get()
-	defer client.Close()
-	result, err = client.Do(cmd, args...)
+func (c Client) do(cmd string, args ...interface{}) (result interface{}, err error) {
+	result, err = c.Conn.Do(cmd, args...)
 	if err != nil {
 		log.Error(fmt.Sprintf("redis error[%s]\n", err))
 	}
 	return result, err
 }
 
-func GetClient() *redis.Pool {
-	//初始化
-	if poolInit == 0 {
-		newPool()
-		poolInit = 1
+//------------------------------------------数据类型转换---------------------------------------------
+func FBytes(result interface{}, err error) ([]byte, error) {
+	if err == nil {
+		return redis.Bytes(result, err)
+	} else {
+		return result.([]byte), err
 	}
-	return &redisPool
 }
-
-func newPool() {
-	redisPool = redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			conn, err := redis.DialURL(viper.GetString("redis_api_url"))
-			if err != nil {
-				log.Error(fmt.Sprintf("redis connect error[%s]\n", err))
-			}
-			return conn, err
-		},
-		MaxIdle:   16,
-		MaxActive: 16,
+func FInt(result interface{}, err error) (int, error) {
+	if err == nil {
+		return redis.Int(result, err)
+	} else {
+		return result.(int), err
 	}
-
-	return
 }
-
+func FStr(result interface{}, err error) (string, error) {
+	if err == nil {
+		return redis.String(result, err)
+	} else {
+		return result.(string), err
+	}
+}
+func FMapStrStr(result interface{}, err error) (map[string]string, error) {
+	if err == nil {
+		return redis.StringMap(result, err)
+	} else {
+		return result.(map[string]string), err
+	}
+}
