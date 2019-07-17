@@ -1,7 +1,6 @@
 package time
 
 import (
-	"database/sql/driver"
 	"errors"
 	"fmt"
 	"regexp"
@@ -113,31 +112,6 @@ func (t Time) Unix() int64 {
 	return t.Current.Unix()
 }
 
-// 实现 MarshalJSON 接口，格式 %Y-%m-%d %H:%M:%S
-func (t Time) MarshalJSON() ([]byte, error) {
-	formatted := fmt.Sprintf("\"%s\"", t.Current.Format("2006-01-02 15:04:05"))
-	return []byte(formatted), nil
-}
-
-// 括入timestamp数据时要用方法
-func (t Time) Value() (driver.Value, error) {
-	var zeroTime time.Time
-	if t.Current.UnixNano() == zeroTime.UnixNano() {
-		return nil, nil
-	}
-	return t.Current, nil
-}
-
-// Scan 扫描数据
-func (t *Time) Scan(v interface{}) error {
-	value, ok := v.(time.Time)
-	if ok {
-		*t = Time{Current: value}
-		return nil
-	}
-	return fmt.Errorf("can not convert %v to timestamp", v)
-}
-
 //获取时间对应的周
 func (t Time) Weekday() string {
 	weeks := map[time.Weekday]string{time.Monday: "1", time.Tuesday: "2", time.Wednesday: "3", time.Thursday: "4", time.Friday: "5", time.Saturday: "6", time.Sunday: "0"}
@@ -182,6 +156,23 @@ func (t Time) Second() int {
 
 func (t Time) Nanosecond() int {
 	return t.Current.Nanosecond()
+}
+
+func (t Time) String() string {
+	return t.Current.Format("2006-01-02 15:04:05")
+}
+
+func (t *Time) UnmarshalJSON(b []byte) (err error) {
+    s := strings.Trim(string(b), "\"")
+    t.Current = time.Time{}
+    t.Current, err = time.Parse("2006-01-02 15:04:05", s)
+    return err
+}
+
+// 实现 MarshalJSON 接口，格式 %Y-%m-%d %H:%M:%S
+func (t Time) MarshalJSON() ([]byte, error) {
+    formatted := fmt.Sprintf("\"%s\"", t.Format("2006-01-02 15:04:05"))
+    return []byte(formatted), nil
 }
 
 //获取时间对应的周

@@ -2,6 +2,7 @@ package redis
 
 import (
 	"fmt"
+//    "reflect"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jingwu15/golib/tconv"
 	"github.com/jingwu15/golib/time"
@@ -182,17 +183,17 @@ func (s Sentinel) Get() (Client, error) {
 
 //-------------------------------------普通K-V操作-------------------------------------------------
 func (c Client) Set(key string, value string) (string, error) {
-	//r, e := c.do("SET", key, value)
-	//fmt.Println("----------set-start--------------")
-	//fmt.Println(r)
-	//fmt.Println(e)
-	//fmt.Println("----------set-end---------------")
-	//return FString(r, e)
 	return FStr(c.do("SET", key, value))
 }
 
 func (c Client) Get(key string) (string, error) {
 	return FStr(c.do("GET", key))
+}
+
+func (c Client) Mget(keys []string) ([]string, error) {
+    ks := make([]interface{}, len(keys))
+    for i, v := range keys { ks[i] = v }
+    return FStrs(c.do("MGET", ks...))
 }
 
 //-------------------------------------Hash(哈希表)操作-------------------------------------------------
@@ -204,32 +205,46 @@ func (c Client) Hgetall(key string) (map[string]string, error) {
 	return FMapStrStr(c.do("HGETALL", key))
 }
 
-func (c Client) Hget(key string, hkey string) ([]byte, error) {
-	result, err := c.do("HGET", key, hkey)
-	return FBytes(result, err)
+func (c Client) Hget(key string, hkey string) (string, error) {
+	return FStr(c.do("HGET", key, hkey))
+}
+
+func (c Client) Hmget(key string, hkeys []string) (resp map[string]string, err error) {
+    ks := []interface{}{key}
+    for _, v := range hkeys { ks = append(ks, v) }
+    rs, err := FBytess(c.do("HMGET", ks...))
+    if err != nil { return resp, err }
+
+    resp = map[string]string{}
+    for i, hkey := range hkeys {
+        if len(rs[i]) > 0 {
+            resp[hkey] = string(rs[i])
+        }
+    }
+    return resp, err
 }
 
 //------------------------------------------------List(列表)操作-----------------------------------
-func (c Client) Lindex(key string, index string) ([]byte, error) {
-	return FBytes(c.do("LINDEX", key, index))
+func (c Client) Lindex(key string, index string) (string, error) {
+	return FStr(c.do("LINDEX", key, index))
 }
 
 func (c Client) Llen(key string) (int, error) {
 	return FInt(c.do("LLEN", key))
 }
 
-func (c Client) Lpop(key string) ([]byte, error) {
-	return FBytes(c.do("LPOP", key))
+func (c Client) Lpop(key string) (string, error) {
+	return FStr(c.do("LPOP", key))
 }
 
-func (c Client) Rpush(key string, values ...string) ([]byte, error) {
+func (c Client) Rpush(key string, values ...string) (string, error) {
 	//var resp []byte
 	//args := []interface{}{key}
 	//for _,v := range values {
 	//	args = append(args, v)
 	//}
 	result, err := c.do("RPUSH", values)
-	return FBytes(result, err)
+	return FStr(result, err)
 }
 
 //-----------------------------------------redis连接封-----------------------------------------------
@@ -243,6 +258,13 @@ func (c Client) do(cmd string, args ...interface{}) (result interface{}, err err
 }
 
 //------------------------------------------数据类型转换---------------------------------------------
+func FBytess(result interface{}, err error) ([][]byte, error) {
+	if err == nil {
+		return redis.ByteSlices(result, err)
+	} else {
+		return result.([][]byte), err
+	}
+}
 func FBytes(result interface{}, err error) ([]byte, error) {
 	if err == nil {
 		return redis.Bytes(result, err)
@@ -263,6 +285,12 @@ func FStr(result interface{}, err error) (string, error) {
 	} else {
 		return result.(string), err
 	}
+}
+func FStrs(result interface{}, err error) ([]string, error) {
+    rows, err := FBytess(result, err)
+    rs := []string{}
+    for _, row := range rows { rs = append(rs, string(row)) }
+    return rs, err
 }
 func FMapStrStr(result interface{}, err error) (map[string]string, error) {
 	if err == nil {

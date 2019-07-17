@@ -1,6 +1,7 @@
 package tconv
 
 import (
+    "fmt"
 	"bytes"
 	"strconv"
 )
@@ -41,8 +42,36 @@ func Atoi(s string) (i int, err error) {
 	return strconv.Atoi(s)
 }
 
+func AtoiForce(s string) int {
+    i := 0
+    i, _ = strconv.Atoi(s)
+    return i
+}
+
+func StrToIntForce(s string) int {
+    i := 0
+    i, _ = strconv.Atoi(s)
+    return i
+}
+
+func StrToInt(s string) (i int, err error) {
+	return strconv.Atoi(s)
+}
+
 func Itoa(i int) string {
 	return strconv.Itoa(i)
+}
+
+func IntToStr(i int) string {
+	return strconv.Itoa(i)
+}
+
+func IntsToStrs(rows []int) []string {
+    strs := []string{}
+    for _, row := range rows {
+        strs = append(strs, strconv.Itoa(row))
+    }
+	return strs
 }
 
 //将[][]byte 转为json列表,如：[][]byte{[]byte(`a`), []byte(`a`)} => ["a","b"]
@@ -54,7 +83,15 @@ func ByteList_to_json(rawList [][]byte) []byte {
 	return bytes.Join(items, []byte(""))
 }
 
-func KeysMapStr(data map[string]interface{}) []string {
+func KeysMapIF(data map[string]interface{}) []string {
+	keys := []string{}
+	for key, _ := range data {
+        keys = append(keys, key)
+	}
+	return keys
+}
+
+func KeysMapStr(data map[string]string) []string {
 	keys := []string{}
 	for key, _ := range data {
         keys = append(keys, key)
@@ -115,3 +152,24 @@ func KStrVStrToMap(keys, values []string) map[string]string {
 	}
 	return m
 }
+
+func FormatValues(items interface{}, format string) (keys []string) {
+    keys = []string{}
+    switch items.(type) {
+    case []string:
+        for _, v := range items.([]string) {
+            keys = append(keys, fmt.Sprintf(format, v))
+        }
+    case []int:
+        for _, v := range items.([]int) {
+            keys = append(keys, fmt.Sprintf(format, v))
+        }
+    case []float64:
+        for _, v := range items.([]float64) {
+            keys = append(keys, fmt.Sprintf(format, v))
+        }
+    default:
+    }
+    return keys
+}
+
