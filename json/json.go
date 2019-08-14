@@ -70,6 +70,12 @@ func Get(data []byte, keys ...string) (value []byte, dataType jparse.ValueType, 
 	return jparse.Get(data, keys...)
 }
 
+//封装Get方法，取行json字符串的子串
+func GetByte(data []byte, keys ...string) (value []byte, err error) {
+	value, _, _, err = jparse.Get(data, keys...)
+    return value, err
+}
+
 func GetBoolean(data []byte, keys ...string) (val bool, err error) {
 	return jparse.GetBoolean(data, keys...)
 }
