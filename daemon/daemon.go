@@ -4,7 +4,6 @@ import (
 	"os"
 	"fmt"
 	"time"
-	"bytes"
 	"strconv"
 	"strings"
 	"syscall"
@@ -12,66 +11,11 @@ import (
 	"os/signal"
 	"io/ioutil"
 	"path/filepath"
-	"github.com/spf13/viper"
-	"github.com/erikdubbelboer/gspt"
-	logchan "github.com/jingwu15/golib/logchan"
 	log "github.com/sirupsen/logrus"
+	logchan "github.com/jingwu15/golib/logchan"
 )
 
 var runFlag int = 1
-
-func findProcess(procTitle string) ([]int, error) {
-	var err error
-	matches, err := filepath.Glob("/proc/*/cmdline")
-	if err != nil {
-		return nil, err
-	}
-	var pid int
-	var pids = []int{}
-	var tmp []string
-	var body []byte
-	for _, filename := range matches {
-		body, err = ioutil.ReadFile(filename)
-		if err == nil {
-			if bytes.HasPrefix(body, []byte(procTitle)) {
-				tmp = strings.Split(filename, "/")
-				pid, _ = strconv.Atoi(tmp[2])
-				pids = append(pids, pid)
-			}
-		}
-	}
-	return pids, nil
-}
-
-//初始化日志
-func InitLog() {
-	go logchan.LogWrite()
-	log.SetFormatter(&log.JSONFormatter{})
-	//log.SetOutput(ioutil.Discard)
-    logLevelMap := map[string]log.Level{
-        "trace": log.TraceLevel,
-        "debug": log.DebugLevel,
-        "info":  log.InfoLevel,
-        "warn":  log.WarnLevel,
-        "error": log.ErrorLevel,
-        "fatal": log.FatalLevel,
-        "panic": log.PanicLevel,
-    }
-    logLevel := viper.GetString("log.level")
-    if level, ok := logLevelMap[logLevel]; ok {
-	    log.SetLevel(level)
-    } else {
-	    log.SetLevel(log.DebugLevel)
-    }
-	config := map[string]string{
-		"error":      viper.GetString("log.error"),
-		"info":       viper.GetString("log.info"),
-		"writeDelay": viper.GetString("log.delay"),
-		"cutType":    "day",
-	}
-	logChanHook := logchan.NewLogChanHook(config)
-	log.AddHook(&logChanHook)
-}
 
 //处理信号，停止及重启
 func handleSignals(fun_Close func()) {
@@ -99,70 +43,134 @@ func handleSignals(fun_Close func()) {
 	}
 }
 
-func Run(procTitle string, fun_Run func(), fun_Close func()) {
-	gspt.SetProcTitle(procTitle)
+func Run(pidfile string, fun_Run func(), fun_Close func()) error {
+    fpid, err := os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0777)
+    if !os.IsNotExist(err) {    //进程文件存在, 检查进程是否真的存在
+        body, err := ioutil.ReadAll(fpid)
+        if err != nil { return fmt.Errorf("读取pidfile文件失败") }
+        pid, _ := strconv.Atoi(string(body))
+        if pid > 0 {            //进程ID存在
+            pidfileOld := fmt.Sprintf("/proc/%s", string(body))
+            _, err := os.Open(pidfileOld)
+            if !os.IsNotExist(err) { return fmt.Errorf("程序运行中") }
+        }
+    }
+
+    //写入新的进程ID
+    pid := os.Getpid()
+    pidStr := strconv.Itoa(pid)
+    _, err = fpid.WriteString(pidStr)
+    if err != nil { return fmt.Errorf("写入pidfile失败： %s", err.Error()) }
 
 	go handleSignals(fun_Close)
-	InitLog()
 
     fun_Run()
 
-	log.Info(fmt.Sprintf("%s is running", procTitle))
 	for {
 		if runFlag == 1 {
 			//未结束，一直等待
 			time.Sleep(time.Duration(2) * time.Second)
 			//log.Info(fmt.Sprintf("%s is running", procTitle))
 		} else {
-			log.Info(fmt.Sprintf("%s is shut down", procTitle))
+			//log.Info(fmt.Sprintf("%s is shut down", procTitle))
 			break
 		}
 	}
+    return nil
 }
 
-func Start(procTitle string) {
-	var err error
+func Start(pidfile string) (err error) {
+    fpid, err := os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR, 0777)
+    //进程文件已存在
+    if !os.IsNotExist(err) {
+        body, err := ioutil.ReadAll(fpid)
+        if err != nil { fpid.Close(); return fmt.Errorf("读取 %s 文件失败", pidfile) }
+
+        pidfileOld := fmt.Sprintf("/proc/%s", string(body))
+        fpidProc, err := os.Open(pidfileOld)
+        if os.IsNotExist(err) {             //只存在一个空的 pidfile, 删除
+            os.Remove(pidfile)
+            fpidProc.Close()
+        } else {
+            fpid.Close()
+            return fmt.Errorf("程序已运行")
+        }
+    }
+    fpid.Close()
+
     cmdArgs := os.Args
 	cmdArgs[0], _ = filepath.Abs(cmdArgs[0])
     cmd := strings.Replace(strings.Join(cmdArgs, " "), "start", "run", 1)
     cmd = fmt.Sprintf("nohup %s &> /tmp/log_gyworker.log &", cmd)
 	client := exec.Command("sh", "-c", cmd)
 	err = client.Start()
-	if err != nil {
-		fmt.Println(procTitle, "start error:")
-		fmt.Println(err)
-		return
-	}
+	if err != nil { return err }
 	err = client.Wait()
-	if err != nil {
-		fmt.Println(procTitle, "start error:")
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(procTitle, "is started")
-	return
+	if err != nil { return err }
+	return nil
 }
 
-//func Restart(procTitle string) {
-//	pids, err := findProcess(procTitle)
-//	if err != nil {
-//		log.Error(err)
-//		return
-//	}
-//	for _, pid := range pids {
-//		syscall.Kill(pid, syscall.SIGUSR2)
-//	}
-//	fmt.Println(procTitle, "is restarted")
-//}
+//重启，先停后启
+func Restart(pidfile string) (err error) {
+    err = Stop(pidfile)
+    if err != nil { return err }
 
-func Stop(procTitle string) {
-	pids, err := findProcess(procTitle)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	for _, pid := range pids {
-		syscall.Kill(pid, syscall.SIGTERM)
-	}
-	fmt.Println(procTitle, "is stoped")
+    err = Start(pidfile)
+    if err != nil { return err }
+
+    return nil
+}
+
+//重载，要用户程序支持
+func Reload(pidfile string) (err error) {
+    fpid, err := os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR, 0777)
+    //进程文件不存在, 退出
+    if os.IsNotExist(err) { fpid.Close(); return fmt.Errorf("进程已终止或 %s 文件不存在", pidfile) }
+
+    //进程文件存在, 检查进程是否真的存在
+    body, err := ioutil.ReadAll(fpid)
+    if err != nil { fpid.Close(); return fmt.Errorf("读取 %s 文件失败", pidfile) }
+
+    pid, _ := strconv.Atoi(string(body))
+    //进程ID存在, 但错误
+    if pid <= 0 { fpid.Close(); return fmt.Errorf("%s 文件内容错误，非数字", pidfile) }
+    pidfileOld := fmt.Sprintf("/proc/%s", string(body))
+    fpidProc, err := os.Open(pidfileOld)
+    if os.IsNotExist(err) {
+        os.Remove(pidfile)
+        fpidProc.Close()
+        return fmt.Errorf("进程已终止")
+    }
+
+	syscall.Kill(pid, syscall.SIGUSR2)
+    return nil
+}
+
+func Stop(pidfile string) (err error) {
+    fpid, err := os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR, 0777)
+    //进程文件不存在, 退出
+    if os.IsNotExist(err) { fpid.Close(); return fmt.Errorf("进程已终止或 %s 文件不存在", pidfile) }
+
+    //进程文件存在, 检查进程是否真的存在
+    body, err := ioutil.ReadAll(fpid)
+    if err != nil { fpid.Close(); return fmt.Errorf("读取 %s 文件失败", pidfile) }
+
+    pid, _ := strconv.Atoi(string(body))
+    //进程ID存在, 但错误
+    if pid <= 0 { fpid.Close(); return fmt.Errorf("%s 文件内容错误，非数字", pidfile) }
+    pidfileOld := fmt.Sprintf("/proc/%s", string(body))
+    fpidProc, err := os.Open(pidfileOld)
+    if os.IsNotExist(err) {
+        os.Remove(pidfile)
+        fpidProc.Close()
+        return fmt.Errorf("进程已终止")
+    }
+
+    //强杀
+	syscall.Kill(pid, syscall.SIGKILL)
+    os.Remove(pidfile)
+
+    //交由用户程序处理完任务，再退出
+	//syscall.Kill(pid, syscall.SIGTERM)
+    return nil
 }
