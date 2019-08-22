@@ -84,19 +84,22 @@ func Start(pidfile string) (err error) {
     //进程文件已存在
     if !os.IsNotExist(err) {
         body, err := ioutil.ReadAll(fpid)
-        if err != nil { fpid.Close(); return fmt.Errorf("读取 %s 文件失败", pidfile) }
-
-        pidfileOld := fmt.Sprintf("/proc/%s", string(body))
-        fpidProc, err := os.Open(pidfileOld)
-        if os.IsNotExist(err) {             //只存在一个空的 pidfile, 删除
+        fpid.Close()
+        if err != nil { return fmt.Errorf("读取 %s 文件失败", pidfile) }
+        pidStr := string(body)
+        if pidStr == "" {
             os.Remove(pidfile)
-            fpidProc.Close()
         } else {
-            fpid.Close()
-            return fmt.Errorf("程序已运行")
+            pidfileOld := fmt.Sprintf("/proc/%s", pidStr)
+            fpidProc, err := os.Open(pidfileOld)
+            fpidProc.Close()
+            if os.IsNotExist(err) {             //只存在一个空的 pidfile, 删除
+                os.Remove(pidfile)
+            } else {
+                return fmt.Errorf("程序已运行")
+            }
         }
     }
-    fpid.Close()
 
     cmdArgs := os.Args
 	cmdArgs[0], _ = filepath.Abs(cmdArgs[0])
