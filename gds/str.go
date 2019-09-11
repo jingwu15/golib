@@ -17,3 +17,8 @@ func Str_strMap(raw, sep string, trims ...string) map[string]int {
 	return m
 }
 
+//字符串，拆分为数组，如：a,b,c 拆分为数组为： {"a", "b", "c"}
+func Str_strs(raw, sep string, trims ...string) []string {
+    return strings.Split(raw, sep)
+}
+

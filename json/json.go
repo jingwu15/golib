@@ -76,6 +76,16 @@ func GetByte(data []byte, keys ...string) (value []byte, err error) {
     return value, err
 }
 
+//封装Get方法，取行json字符串的子串
+func GetStrs(data []byte, keys ...string) (value []string, err error) {
+    rows := []string{}
+    callback := func(value []byte, dataType ValueType, offset int, err error) {
+        if err == nil { rows = append(rows, string(value)) }
+    }
+    ArrayEach(data, callback, keys...)
+    return rows, nil
+}
+
 func GetBoolean(data []byte, keys ...string) (val bool, err error) {
 	return jparse.GetBoolean(data, keys...)
 }

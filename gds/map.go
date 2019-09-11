@@ -46,22 +46,29 @@ func Map_vkMap(data interface{}) (ret interface{}, err error) {
         return ret, nil
     default:
     }
-    return data, fmt.Errorf("数据类型支持")
+    return data, fmt.Errorf("数据类型不支持")
 }
 
 //map 取 key 列表
 func Map_kList(data interface{}) (ret interface{}, err error) {
     t0 := reflect.TypeOf(data).String()
+    fmt.Println("t0----", t0)
     switch t0 {
-    case "map[string]string", "map[string]int", "map[string]interface{}":
+    case "map[string]string":
         ret := []string{}
-        for k, _ := range data.(map[string]string) {
-            ret = append(ret, k)
-        }
+        for k, _ := range data.(map[string]string) { ret = append(ret, k) }
+        return ret, nil
+    case "map[string]int":
+        ret := []string{}
+        for k, _ := range data.(map[string]int) { ret = append(ret, k) }
+        return ret, nil
+    case "map[string]interface{}", "map[string]interface {}":
+        ret := []string{}
+        for k, _ := range data.(map[string]interface{}) { ret = append(ret, k) }
         return ret, nil
     default:
     }
-    return data, fmt.Errorf("数据类型支持")
+    return data, fmt.Errorf("数据类型不支持")
 }
 
 //map 取 value 列表
@@ -76,7 +83,7 @@ func Map_vList(data interface{}) (ret interface{}, err error) {
         return ret, nil
     default:
     }
-    return data, fmt.Errorf("数据类型支持")
+    return data, fmt.Errorf("数据类型不支持")
 }
 
 func Map_kStrs(data interface{}) (rs []string, e error) {

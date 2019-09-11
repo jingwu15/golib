@@ -8,7 +8,7 @@ import (
 
 //取数组的交集
 func List_inner(itemss ...interface{}) (data interface{}, err error) {
-    if len(itemss) < 2 { return data, fmt.Errorf("参数须多于2个") }
+    if len(itemss) < 2 { return data, fmt.Errorf("参数必须多于2个") }
     dtype := GetType(itemss[0])
     switch dtype {
     case "[]int":

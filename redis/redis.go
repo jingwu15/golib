@@ -209,6 +209,22 @@ func (c Client) Hget(key string, hkey string) (string, error) {
 	return FStr(c.do("HGET", key, hkey))
 }
 
+func (c Client) Hincrby(key string, hkey string, incr int) (int, error) {
+    return c.Hincr(key, hkey, incr)
+}
+
+func (c Client) Hincr(key string, hkey string, incr int) (int, error) {
+    return FInt(c.do("HINCRBY", key, hkey, incr))
+}
+
+func (c Client) Hincrbyfloat(key string, hkey string, incr float64) (float64, error) {
+    return c.HincrFloat(key, hkey, incr)
+}
+
+func (c Client) HincrFloat(key string, hkey string, incr float64) (float64, error) {
+	return FFloat(c.do("HINCRBYFLOAT", key, hkey, incr))
+}
+
 func (c Client) Hmget(key string, hkeys []string) (resp map[string]string, err error) {
     ks := []interface{}{key}
     for _, v := range hkeys { ks = append(ks, v) }
@@ -265,6 +281,7 @@ func FBytess(result interface{}, err error) ([][]byte, error) {
 		return result.([][]byte), err
 	}
 }
+
 func FBytes(result interface{}, err error) ([]byte, error) {
 	if err == nil {
 		return redis.Bytes(result, err)
@@ -272,6 +289,7 @@ func FBytes(result interface{}, err error) ([]byte, error) {
 		return result.([]byte), err
 	}
 }
+
 func FInt(result interface{}, err error) (int, error) {
 	if err == nil {
 		return redis.Int(result, err)
@@ -279,6 +297,15 @@ func FInt(result interface{}, err error) (int, error) {
 		return result.(int), err
 	}
 }
+
+func FFloat(result interface{}, err error) (float64, error) {
+	if err == nil {
+		return redis.Float64(result, err)
+	} else {
+		return result.(float64), err
+    }
+}
+
 func FStr(result interface{}, err error) (string, error) {
 	if err == nil {
 		return redis.String(result, err)
