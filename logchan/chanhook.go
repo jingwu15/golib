@@ -90,6 +90,7 @@ func (hook *LogChanHook) Fire(entry *logrus.Entry) error {
 	timeRawStr = strings.Replace(timeRawStr, "-", "", -1)
 	timeRawStr = strings.Replace(timeRawStr, ":", "", -1)
 	timeStr := timeRawStr[0:14]
+    tmp = strings.ReplaceAll(tmp, `\u0026`, "&")
 	var line bytes.Buffer
 	line.WriteString(LogFormatLevel(entry.Level))
 	line.WriteString(",")
