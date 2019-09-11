@@ -1,14 +1,16 @@
 package misc
 
 import (
+	"os"
+    "net"
+	"sync"
+	"time"
+	"reflect"
+    "strings"
+	"math/rand"
 	"crypto/md5"
 	"encoding/hex"
 	log "github.com/sirupsen/logrus"
-	"math/rand"
-	"os"
-	"reflect"
-	"sync"
-	"time"
 )
 
 func GetRandNum(num int) int {
@@ -133,6 +135,30 @@ func IsEmpty(a interface{}) bool {
 		v = v.Elem()
 	}
 	return v.Interface() == reflect.Zero(v.Type()).Interface()
+}
+
+//取行操作系统的IP
+var machineIp = map[string]string{"net": "", "ip": "", "port": ""}
+func MachineIp(reqIps ...string) (protocol, ips, ports string) {
+    if machineIp["ip"] == "" {
+        lip, rip := "0.0.0.0", "119.29.29.29"
+        if len(reqIps) == 1 {
+            rip = reqIps[0]
+        }
+        laddr := net.UDPAddr{
+            IP: net.ParseIP(lip),
+        }
+        raddr := net.UDPAddr{
+            IP: net.ParseIP(rip),
+            Port: 22,
+        }
+        udp, _ := net.DialUDP("udp", &laddr, &raddr)
+        laInfo := strings.Split(udp.LocalAddr().String(), ":")
+        machineIp["net"]    = "udp"
+        machineIp["ip"]     = laInfo[0]
+        machineIp["port"]   = laInfo[1]
+    }
+    return machineIp["net"], machineIp["ip"], machineIp["port"]
 }
 
 /*

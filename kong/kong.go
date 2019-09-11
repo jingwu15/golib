@@ -122,8 +122,8 @@ type Route struct {
     Strip_path      bool        `json:"strip_path"`
     Preserve_host   bool        `json:"preserve_host,omitempty"`
     Snis            []string    `json:"snis"`
-    Sources         []string    `json:"sources"`
-    Destinations    []string    `json:"destinations"`
+    //Sources         []string    `json:"sources"`
+    //Destinations    []string    `json:"destinations"`
     Tags            []string    `json:"tags"`
 }
 
@@ -157,8 +157,8 @@ func NewRoute() Route {
         Strip_path:     false,
         Preserve_host:  false,
         Snis:           []string{},
-        Sources:        []string{},
-        Destinations:   []string{},
+        //Sources:        []string{},
+        //Destinations:   []string{},
         Tags:           []string{},
     }
 }

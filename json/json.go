@@ -1,8 +1,10 @@
 package json
 
 import (
+    "os"
 //	"fmt"
     "bytes"
+    "io/ioutil"
     "encoding/json"
 	"github.com/json-iterator/go"
 	jparse "github.com/buger/jsonparser"
@@ -45,12 +47,29 @@ func Encode(v interface{}) ([]byte, error) {
 	//return jsonN.Marshal(v)
 }
 
+func EncodeNE(v interface{}) (string) {
+    b, _ := Marshal(v)
+    return string(b)
+}
+
 func EncodeIndent(v interface{}, prefix, indent string) ([]byte, error) {
     return MarshalIndent(v, prefix, indent)
 }
 
 func Decode(data []byte, v interface{}) error {
 	return jsonN.Unmarshal(data, v)
+}
+
+func DecodeFile(fname string, v interface{}) error {
+    fp, err := os.Open(fname)
+    if err != nil {
+        return err
+    }
+    data, err := ioutil.ReadAll(fp)
+    if err != nil {
+        return err
+    }
+    return jsonN.Unmarshal(data, v)
 }
 
 func ArrayEach(data []byte, callback func(value []byte, dataType ValueType, offset int, err error), keys ...string) (offset int, err error) {

@@ -84,6 +84,67 @@ func HeadersMapSliceToMapStr(headers map[string][]string) map[string]string {
 	return headersN
 }
 
+
+//GET请求
+func Get(url string, headers map[string]string, timeout int) (httpcode int, body string, respHeaders map[string]string, err error) {
+    req := Request{Url: url, Method: "GET", Body: "", Headers: headers}
+    return DoReq(req, timeout)
+}
+
+//DELETE请求
+func Delete(url string, headers map[string]string, timeout int) (httpcode int, body string, respHeaders map[string]string, err error) {
+    req := Request{Url: url, Method: "DELETE", Body: "", Headers: headers}
+    return DoReq(req, timeout)
+}
+
+//PUT请求
+func Put(url, reqBody string, headers map[string]string, timeout int) (httpcode int, body string, respHeaders map[string]string, err error) {
+    req := Request{Url: url, Method: "PUT", Body: reqBody, Headers: headers}
+    return DoReq(req, timeout)
+}
+
+//PATCH请求
+func Patch(url, reqBody string, headers map[string]string, timeout int) (httpcode int, body string, respHeaders map[string]string, err error) {
+    req := Request{Url: url, Method: "PATCH", Body: reqBody, Headers: headers}
+    return DoReq(req, timeout)
+}
+
+//POST请求
+func Post(url, reqBody string, headers map[string]string, timeout int) (httpcode int, body string, respHeaders map[string]string, err error) {
+    req := Request{Url: url, Method: "POST", Body: reqBody, Headers: headers}
+    return DoReq(req, timeout)
+}
+
+func DoReq(req Request, timeout int) (httpcode int, body string, headers map[string]string, e error) {
+    var err error
+    client := &http.Client{Timeout: time.Keep(timeout)}
+
+    var rq *http.Request
+    if req.Body == "" {
+        rq, err = http.NewRequest(req.Method, req.Url, nil)
+    } else {
+        rq, err = http.NewRequest(req.Method, req.Url, strings.NewReader(req.Body))
+    }
+    if err != nil {
+        return 0, "", map[string]string{}, err
+    }
+
+    for key, value := range req.Headers {
+        rq.Header.Set(key, value)
+    }
+    response, err := client.Do(rq)
+    if err != nil {
+        return 0, "", map[string]string{}, err
+    }
+
+    bodyRaw, err := ioutil.ReadAll(response.Body)
+    response.Body.Close()
+    if err != nil {
+        return response.StatusCode, string(bodyRaw), HeadersMapSliceToMapStr(response.Header), err
+    }
+    return response.StatusCode, string(bodyRaw), HeadersMapSliceToMapStr(response.Header), nil
+}
+
 func DoPost(url, reqBody string, headers map[string]string, timeout int) (httpcode int, body string, respHeaders map[string]string, err error) {
 	client := &http.Client{Timeout: time.Keep(timeout)}
 

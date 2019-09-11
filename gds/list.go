@@ -47,7 +47,7 @@ func List_intMap(keys []int) map[int]int {
 	return m
 }
 
-//int列表转换成字典
+//str列表转换成字典
 func List_strMap(keys []string) map[string]int {
     var m = map[string]int{}
 	for _, i := range keys {
