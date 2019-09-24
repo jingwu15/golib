@@ -55,6 +55,7 @@ func Get(keys ...string) *logrus.Logger {
         loggers[key].SetOutput(os.Stdout)
 
         fname := fmt.Sprintf("%s/%s%s.log", LOG_DIR, LOG_PRE, key)
+        fmt.Println("fname--------", fname)
         loggers[key].Hooks.Add(lfshook.NewHook(
             lfshook.PathMap{
                 logrus.TraceLevel: fname,
@@ -64,9 +65,9 @@ func Get(keys ...string) *logrus.Logger {
                 logrus.ErrorLevel: fname,
                 logrus.FatalLevel: fname,
                 logrus.PanicLevel: fname,
-            },
-            &logrus.JSONFormatter{TimestampFormat: "2006-01-02 15:04:05"},
-        ))
+	        },
+		    &logrus.JSONFormatter{TimestampFormat: "2006-01-02 15:04:05"},
+	    ))
         loggers[key].WithFields(logrus.Fields{"btype": key})
     }
     return loggers[key]
@@ -99,75 +100,129 @@ func Format(key, format string) {
     }
 }
 
-//func Debug(args ...interface{}) {
-//    loggers[logkeyDefault].Debug(args...)
+func Debug(args ...interface{}) {
+    loggers[logkeyDefault].Debug(args...)
+}
+func Debugf(format string, args ...interface{}) {
+    loggers[logkeyDefault].Debugf(format, args...)
+}
+func Debugln(args ...interface{}) {
+    loggers[logkeyDefault].Debugln(args...)
+}
+func Error(args ...interface{}) {
+    loggers[logkeyDefault].Error(args...)
+}
+func Errorf(format string, args ...interface{}) {
+    loggers[logkeyDefault].Errorf(format, args...)
+}
+func Errorln(args ...interface{}) {
+    loggers[logkeyDefault].Errorln(args...)
+}
+func Fatal(args ...interface{}) {
+    loggers[logkeyDefault].Fatal(args...)
+}
+func Fatalf(format string, args ...interface{}) {
+    loggers[logkeyDefault].Fatalf(format, args...)
+}
+func Fatalln(args ...interface{}) {
+    loggers[logkeyDefault].Fatalln(args...)
+}
+func Info(args ...interface{}) {
+    loggers[logkeyDefault].Info(args...)
+}
+func Infof(format string, args ...interface{}) {
+    loggers[logkeyDefault].Infof(format, args...)
+}
+func Infoln(args ...interface{}) {
+    loggers[logkeyDefault].Infoln(args...)
+}
+func Panic(args ...interface{}) {
+    loggers[logkeyDefault].Panic(args...)
+}
+func Panicf(format string, args ...interface{}) {
+    loggers[logkeyDefault].Panicf(format, args...)
+}
+func Panicln(args ...interface{}) {
+    loggers[logkeyDefault].Panicln(args...)
+}
+func Print(args ...interface{}) {
+    loggers[logkeyDefault].Print(args...)
+}
+func Printf(format string, args ...interface{}) {
+    loggers[logkeyDefault].Printf(format, args...)
+}
+func Println(args ...interface{}) {
+    loggers[logkeyDefault].Println(args...)
+}
+func Warn(args ...interface{}) {
+    loggers[logkeyDefault].Warn(args...)
+}
+func Warnf(format string, args ...interface{}) {
+    loggers[logkeyDefault].Warnf(format, args...)
+}
+func Warning(args ...interface{}) {
+    loggers[logkeyDefault].Warning(args...)
+}
+func Warningf(format string, args ...interface{}) {
+    loggers[logkeyDefault].Warningf(format, args...)
+}
+func Warningln(args ...interface{}) {
+    loggers[logkeyDefault].Warningln(args...)
+}
+func Warnln(args ...interface{}) {
+    loggers[logkeyDefault].Warnln(args...)
+}
+
+//func Set(key string, sets map[string]string) {
+//    logger, ok := loggers[key]
+//    if !ok { logger = Get(key) }
+//
+//    if v, ok := sets["level"]; { SetLevel(key, v) }
+//    if v, ok := sets["Output_stdout"]; { SetLevel(key, v) }
 //}
-//func Debugf(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Debugf(format, args...)
-//}
-//func Debugln(args ...interface{}) {
-//    loggers[logkeyDefault].Debugln(args...)
-//}
-//func Error(args ...interface{}) {
-//    loggers[logkeyDefault].Error(args...)
-//}
-//func Errorf(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Errorf(format, args...)
-//}
-//func Errorln(args ...interface{}) {
-//    loggers[logkeyDefault].Errorln(args...)
-//}
-//func Fatal(args ...interface{}) {
-//    loggers[logkeyDefault].Fatal(args...)
-//}
-//func Fatalf(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Fatalf(format, args...)
-//}
-//func Fatalln(args ...interface{}) {
-//    loggers[logkeyDefault].Fatalln(args...)
-//}
-//func Info(args ...interface{}) {
-//    loggers[logkeyDefault].Info(args...)
-//}
-//func Infof(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Infof(format, args...)
-//}
-//func Infoln(args ...interface{}) {
-//    loggers[logkeyDefault].Infoln(args...)
-//}
-//func Panic(args ...interface{}) {
-//    loggers[logkeyDefault].Panic(args...)
-//}
-//func Panicf(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Panicf(format, args...)
-//}
-//func Panicln(args ...interface{}) {
-//    loggers[logkeyDefault].Panicln(args...)
-//}
-//func Print(args ...interface{}) {
-//    loggers[logkeyDefault].Print(args...)
-//}
-//func Printf(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Printf(format, args...)
-//}
-//func Println(args ...interface{}) {
-//    loggers[logkeyDefault].Println(args...)
-//}
-//func Warn(args ...interface{}) {
-//    loggers[logkeyDefault].Warn(args...)
-//}
-//func Warnf(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Warnf(format, args...)
-//}
-//func Warning(args ...interface{}) {
-//    loggers[logkeyDefault].Warning(args...)
-//}
-//func Warningf(format string, args ...interface{}) {
-//    loggers[logkeyDefault].Warningf(format, args...)
-//}
-//func Warningln(args ...interface{}) {
-//    loggers[logkeyDefault].Warningln(args...)
-//}
-//func Warnln(args ...interface{}) {
-//    loggers[logkeyDefault].Warnln(args...)
+
+//	//log.SetFormatter(&log.JSONFormatter{})
+//    stdout := viper.GetString("log.stdout")
+//    if stdout != "1" { log.SetOutput(ioutil.Discard) }
+//
+//	config := map[string]string{
+//		"error":      viper.GetString("log.error"),
+//		"info":       viper.GetString("log.info"),
+//		"writeDelay": viper.GetString("log.delay"),
+//		"cutType":    "day",
+//	}
+//	logChanHook := logchan.NewLogChanHook(config)
+//	log.AddHook(&logChanHook)
+//    return nil
+
+//func Get(key string, map[string]string) {
+//	//log.SetFormatter(&log.JSONFormatter{})
+//    stdout := viper.GetString("log.stdout")
+//    if stdout != "1" { log.SetOutput(ioutil.Discard) }
+//
+//    logLevelMap := map[string]log.Level{
+//        "trace": log.TraceLevel,
+//        "debug": log.DebugLevel,
+//        "info":  log.InfoLevel,
+//        "warn":  log.WarnLevel,
+//        "error": log.ErrorLevel,
+//        "fatal": log.FatalLevel,
+//        "panic": log.PanicLevel,
+//    }
+//    logLevel := viper.GetString("log.level")
+//    if level, ok := logLevelMap[logLevel]; ok {
+//	    log.SetLevel(level)
+//    } else {
+//	    log.SetLevel(log.DebugLevel)
+//    }
+//
+//	config := map[string]string{
+//		"error":      viper.GetString("log.error"),
+//		"info":       viper.GetString("log.info"),
+//		"writeDelay": viper.GetString("log.delay"),
+//		"cutType":    "day",
+//	}
+//	logChanHook := logchan.NewLogChanHook(config)
+//	log.AddHook(&logChanHook)
+//    return nil
 //}
