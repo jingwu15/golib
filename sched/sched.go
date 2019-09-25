@@ -115,8 +115,18 @@ func (c Sched) CalcNextTime(SchedArr map[string]string) string{
     keys := []string{"second", "minute", "hour", "day", "month", "year"}
     for i, key := range keys {
         if timeMap[key][1] < timeMap[key][0] {
-            nextMap[key] = timeMap[key][1]
-            incrPkey = keys[i+1]
+            if incrPkey == key {                        //子指明了父增长
+                nextMap[key] = timeMap[key][1]
+                incrPkey = keys[i+1]
+            } else {
+                if currentMap[key] < timeMap[key][0] {
+                    nextMap[key] = timeMap[key][1]
+                    incrPkey = keys[i+1]
+                } else {
+                    nextMap[key] = timeMap[key][0]
+                    incrPkey = ""
+                }
+            }
         } else if timeMap[key][1] == timeMap[key][0] {      //周期内只有一个值
             nextMap[key] = timeMap[key][0]
             if currentMap[key] >= timeMap[key][0] {         //当前的时间点已过，父级增长
@@ -132,15 +142,19 @@ func (c Sched) CalcNextTime(SchedArr map[string]string) string{
         }
     }
 
+    //fmt.Printf("cent: %04d-%02d-%02d %02d:%02d:%02d\n", currentMap["year"], currentMap["month"], currentMap["day"], currentMap["hour"], currentMap["minute"], currentMap["second"])
+    //fmt.Println("sched: ", c.Sched, "\tschedFmt: ", c.SchedFmt)
+    //fmt.Println("timeMap: ", timeMap)
+    //fmt.Printf("next: %04d-%02d-%02d %02d:%02d:%02d\n", nextMap["year"], nextMap["month"], nextMap["day"], nextMap["hour"], nextMap["minute"], nextMap["second"])
+
     nextTimeStr  := fmt.Sprintf("%04d-%02d-%02d %02d:%02d:%02d", nextMap["year"], nextMap["month"], nextMap["day"], nextMap["hour"], nextMap["minute"], nextMap["second"])
 	nextTimeT, _ := time.StrToTime(nextTimeStr)
 	nextTimeUnix := nextTimeT.Unix()       //需要时区
 
-    //星期数据要两次修正            1 30 22 * * 3       周三
+    //校正星其数据            1 30 22 * * 3       周三
     //1. 取到的星期小于正确的星期，应补足                                       在 2019-09-23 12:12:12 周一，取到的下次时间为  2019-09-23 22:30:01 周一,    差两天，补2天
     //2. 取到的星期等于正确的星期，但当前时间早于取到的时间，正确，不处理       在 2019-09-25 12:12:12 周三，取到的下次时间为  2019-09-25 22:30:01 周三,    正确不处理
-    //2. 取到的星期晚于正确的星期，应将星期置为下星期                           在 2019-09-25 22:52:12 周三，取到的下次时间为  2019-09-26 22:30:01 周四,    应将星期置为下星期三
-	//差额天
+    //3. 取到的星期晚于正确的星期，应将星期置为下星期                           在 2019-09-25 22:52:12 周三，取到的下次时间为  2019-09-26 22:30:01 周四,    应将星期置为下星期三
     if SchedArr["week"] != "*" {            //只有明确启用星期才有用
         nextTimeWeek := nextTimeT.WeekInt(0)
 
