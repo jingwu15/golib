@@ -128,6 +128,8 @@ func GetLogFile(logfile string, timeStr string) string {
 
 func LogWrite() {
 	delay, _ := strconv.Atoi(writeDelay)
+    //最少1秒, 否则cpu会100%
+    if delay < 1 { delay = 1 }
 	var limit, i int
 	var line string
 	var ok bool

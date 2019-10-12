@@ -9,8 +9,6 @@ import (
 )
 
 var (
-    LOG_DIR = "/tmp/"
-    LOG_PRE = "log_"
     keyDefault = "default"
     loggers = map[string]*logrus.Logger{}
     levels = map[string]logrus.Level{
@@ -30,7 +28,7 @@ type Cfg struct {
     Level string
 }
 
-var cfg = Cfg{Dir: "/tmp", Pre: "log_", Level: "debug"}
+var cfg = Cfg{Dir: "/tmp", Pre: "log_default", Level: "debug"}
 func InitCfg(cfgUser Cfg) error {
     if cfgUser.Dir == ""   { cfgUser.Dir   = cfg.Dir   }
     if cfgUser.Pre == ""   { cfgUser.Pre   = cfg.Pre   }
