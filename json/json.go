@@ -20,7 +20,7 @@ func Marshal(v interface{}) ([]byte, error) {
     jsonEncoder := jsonN.NewEncoder(bf)
     jsonEncoder.SetEscapeHTML(false)
     err := jsonEncoder.Encode(v)
-    return bf.Bytes(), err
+    return bytes.TrimSpace(bf.Bytes()), err
 
 	//return jsonN.Marshal(v)
 }
