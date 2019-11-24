@@ -91,11 +91,11 @@ func Start(pidfile string) (err error) {
         body, err := ioutil.ReadAll(fpid)
         fpid.Close()
         if err != nil { return fmt.Errorf("读取 %s 文件失败", pidfile) }
-        pidStr := string(body)
-        if pidStr == "" {
+        pid, _ := strconv.Atoi(strings.TrimSpace(string(body)))
+        if pid == 0 {
             os.Remove(pidfile)
         } else {
-            pidfileOld := fmt.Sprintf("/proc/%s", pidStr)
+            pidfileOld := fmt.Sprintf("/proc/%d", pid)
             fpidProc, err := os.Open(pidfileOld)
             fpidProc.Close()
             if os.IsNotExist(err) {             //只存在一个空的 pidfile, 删除
@@ -140,10 +140,10 @@ func Reload(pidfile string) (err error) {
     body, err := ioutil.ReadAll(fpid)
     if err != nil { fpid.Close(); return fmt.Errorf("读取 %s 文件失败", pidfile) }
 
-    pid, _ := strconv.Atoi(string(body))
+    pid, _ := strconv.Atoi(strings.TrimSpace(string(body)))
     //进程ID存在, 但错误
     if pid <= 0 { fpid.Close(); return fmt.Errorf("%s 文件内容错误，非数字", pidfile) }
-    pidfileOld := fmt.Sprintf("/proc/%s", string(body))
+    pidfileOld := fmt.Sprintf("/proc/%d", pid)
     fpidProc, err := os.Open(pidfileOld)
     if os.IsNotExist(err) {
         os.Remove(pidfile)
@@ -164,10 +164,10 @@ func Stop(pidfile string) (err error) {
     body, err := ioutil.ReadAll(fpid)
     if err != nil { fpid.Close(); return fmt.Errorf("读取 %s 文件失败", pidfile) }
 
-    pid, _ := strconv.Atoi(string(body))
+    pid, _ := strconv.Atoi(strings.TrimSpace(string(body)))
     //进程ID存在, 但错误
     if pid <= 0 { fpid.Close(); return fmt.Errorf("%s 文件内容错误，非数字", pidfile) }
-    pidfileOld := fmt.Sprintf("/proc/%s", string(body))
+    pidfileOld := fmt.Sprintf("/proc/%d", pid)
     fpidProc, err := os.Open(pidfileOld)
     if os.IsNotExist(err) {
         os.Remove(pidfile)
