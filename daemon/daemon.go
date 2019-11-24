@@ -44,19 +44,24 @@ func handleSignals(fun_Close func()) {
 }
 
 func Run(pidfile string, fun_Run func(), fun_Close func()) error {
-    fpid, err := os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0777)
+    fpid, err := os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR, 0777)
     if !os.IsNotExist(err) {    //进程文件存在, 检查进程是否真的存在
         body, err := ioutil.ReadAll(fpid)
-        if err != nil { return fmt.Errorf("读取pidfile文件失败") }
-        pid, _ := strconv.Atoi(string(body))
+        fpid.Close()
+        if err != nil { return fmt.Errorf("读取pidfile[%s]文件失败", pidfile) }
+        pid, err := strconv.Atoi(strings.TrimSpace(string(body)))
         if pid > 0 {            //进程ID存在
-            pidfileOld := fmt.Sprintf("/proc/%s", string(body))
-            _, err := os.Open(pidfileOld)
+            pidfileOld := fmt.Sprintf("/proc/%d", pid)
+            fpOld, err := os.Open(pidfileOld)
+            fpOld.Close()
             if !os.IsNotExist(err) { return fmt.Errorf("程序运行中") }
         }
     }
+    fpid.Close()
 
     //写入新的进程ID
+    fpid, err = os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0777)
+    if err != nil { return err }
     pid := os.Getpid()
     pidStr := strconv.Itoa(pid)
     _, err = fpid.WriteString(pidStr)
