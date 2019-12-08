@@ -116,6 +116,8 @@ func I_int(data interface{}) (d int) {
     switch GetType(data) {
     case "int":
         return data.(int)
+    case "int32":
+        d, _ = strconv.Atoi(fmt.Sprintf("%d", data))
     case "int64":
         d, _ = strconv.Atoi(fmt.Sprintf("%d", data))
     case "string":
@@ -140,6 +142,11 @@ func I_ints(data interface{}) (ds []int) {
     switch GetType(data) {
     case "[]int":
         return data.([]int)
+    case "[]int32":
+        for _, v := range data.([]int32) {
+            d, _ := strconv.Atoi(fmt.Sprintf("%d", v))
+            ds = append(ds, d)
+        }
     case "[]int64":
         for _, v := range data.([]int64) {
             d, _ := strconv.Atoi(fmt.Sprintf("%d", v))
