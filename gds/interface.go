@@ -59,7 +59,7 @@ func I_str(data interface{}, replaces ...string) string {
     case "string":
         tmpFormat = strings.Replace(format, replace, "%s", -1)
         key = fmt.Sprintf(tmpFormat, data)
-    case "int", "int64":
+    case "int", "int32", "int64":
         tmpFormat = strings.Replace(format, replace, "%d", -1)
         key = fmt.Sprintf(tmpFormat, data)
     case "float64":

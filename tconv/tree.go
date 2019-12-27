@@ -53,6 +53,10 @@ func ListToKeyMap(data interface{}, idField string) map[string]interface{} {
         switch item[idField].(type) {
         case int:
             idStr = Itoa(item[idField].(int))
+        case int32:
+            idStr = Itoa(int(item[idField].(int32)))
+        case int64:
+            idStr = Itoa(int(item[idField].(int64)))
         case float64:
             idStr = fmt.Sprintf("%.f", item[idField].(float64))
         case string:
@@ -77,6 +81,10 @@ func ListToTreeMap(data interface{}, idField, pidField string) (ret map[string]m
             if tmp[pidField].(float64) == 0 { isParent = true }
         case int:
             if tmp[pidField].(int) == 0 { isParent = true }
+        case int32:
+            if tmp[pidField].(int32) == 0 { isParent = true }
+        case int64:
+            if tmp[pidField].(int64) == 0 { isParent = true }
         case string:
             if tmp[pidField].(string) == "0" { isParent = true }
         default:
@@ -102,6 +110,10 @@ func ListToTreeList(data interface{}, idField, pidField string) (ret []map[strin
             if tmp[pidField].(float64) == 0 { isParent = true }
         case int:
             if tmp[pidField].(int) == 0 { isParent = true }
+        case int32:
+            if tmp[pidField].(int32) == 0 { isParent = true }
+        case int64:
+            if tmp[pidField].(int64) == 0 { isParent = true }
         case string:
             if tmp[pidField].(string) == "0" { isParent = true }
         default:

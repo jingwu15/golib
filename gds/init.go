@@ -16,7 +16,7 @@ func GetType(data interface{}) string {
     case int:                       return "int"
     case int8:                      return "int8"
     case int16:                     return "int16"
-    //case int32:                     return "int32"
+    case int32:                     return "int32"
     case int64:                     return "int64"
     case uint:                      return "uint"
     //case uint8:                     return "uint8"
@@ -29,7 +29,7 @@ func GetType(data interface{}) string {
     case complex64:                 return "complex64"
     case complex128:                return "complex128"
     case byte:                      return "byte"             //alias uint8
-    case rune:                      return "rune"             //alias int32
+    //case rune:                      return "rune"             //alias int32
     case string:                    return "string"
     //数组
     case []bool:                    return "[]bool"

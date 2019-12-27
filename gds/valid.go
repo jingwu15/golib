@@ -162,7 +162,7 @@ func V_notEmpty(value interface{}) (e error) {
 {
     "type": "int",
     "vstr": "list",
-    "data_default": sss
+    "default": sss
 }
 */
 func Valid(params map[string]interface{}, cfgs map[string]interface{}) (data map[string]interface{}, es []string) {

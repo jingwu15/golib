@@ -119,6 +119,40 @@ func Start(pidfile string) (err error) {
 	return nil
 }
 
+func Start_output(pidfile, outputFile string) (err error) {
+    fpid, err := os.OpenFile(pidfile, os.O_CREATE|os.O_RDWR, 0777)
+    //进程文件已存在
+    if !os.IsNotExist(err) {
+        body, err := ioutil.ReadAll(fpid)
+        fpid.Close()
+        if err != nil { return fmt.Errorf("读取 %s 文件失败", pidfile) }
+        pid, _ := strconv.Atoi(strings.TrimSpace(string(body)))
+        if pid == 0 {
+            os.Remove(pidfile)
+        } else {
+            pidfileOld := fmt.Sprintf("/proc/%d", pid)
+            fpidProc, err := os.Open(pidfileOld)
+            fpidProc.Close()
+            if os.IsNotExist(err) {             //只存在一个空的 pidfile, 删除
+                os.Remove(pidfile)
+            } else {
+                return fmt.Errorf("程序已运行")
+            }
+        }
+    }
+
+    cmdArgs := os.Args
+	cmdArgs[0], _ = filepath.Abs(cmdArgs[0])
+    cmd := strings.Replace(strings.Join(cmdArgs, " "), "start", "run", 1)
+    cmd = fmt.Sprintf("nohup %s &> %s &", cmd, outputFile)
+	client := exec.Command("sh", "-c", cmd)
+	err = client.Start()
+	if err != nil { return err }
+	err = client.Wait()
+	if err != nil { return err }
+	return nil
+}
+
 //重启，先停后启
 func Restart(pidfile string) (err error) {
     err = Stop(pidfile)

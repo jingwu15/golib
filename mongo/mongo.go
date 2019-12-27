@@ -11,12 +11,12 @@ import (
 )
 
 type Mongo struct {
-    Uri    string
-    Db string
-    Client *mongo.Client
-    Conn *mongo.Database
-    IsConn bool
-    Colls  map[string]*mongo.Collection
+    Uri     string
+    Db      string
+    Client  *mongo.Client
+    Conn    *mongo.Database
+    IsConn  bool
+    Colls   map[string]*mongo.Collection
 }
 
 var mongos = map[string]*Mongo{}
@@ -88,6 +88,8 @@ func (m *Mongo)Insert_AutoId(doc string, data bson.M) (objId primitive.ObjectID,
     if v, ok := data["id"].(float64); ok { autoId = int(v) }
     if v, ok := data["id"].(int);     ok { autoId = v      }
     if v, ok := data["id"].(int32);   ok { autoId = int(v) }
+    data["create_at"] = time.Now()
+    data["update_at"] = time.Now()
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     res, err := m.coll(doc).InsertOne(ctx, data)
     if err != nil { return objId, 0, err }
@@ -110,9 +112,20 @@ func (m *Mongo)Insert_AutoId(doc string, data bson.M) (objId primitive.ObjectID,
 //    }
 //}
 
-//不存在则插入，存在则更新
-func (m *Mongo)Update(doc string, filter interface{}, data interface{}) (result bson.M, id int, err error) {
+//不存在则插入，存在则更新      //强制所有数据使用bson.M
+func (m *Mongo)Update(doc string, filter bson.M, data bson.M) (result bson.M, id int, err error) {
     var resultUpdate bson.M
+    //处理更新时间问题
+    if _, ok := data["$set"]; ok {
+        if _, ok := data["$set"].(bson.M); ok {
+            data["$set"].(bson.M)["update_at"] = time.Now()
+        }
+        if _, ok := data["$set"].(map[string]interface{}); ok {
+            data["$set"].(map[string]interface{})["update_at"] = time.Now()
+        }
+    } else {
+        data["$set"] = bson.M{"update_at": time.Now()}
+    }
     opts := options.FindOneAndUpdate()
     err = m.coll(doc).FindOneAndUpdate(context.TODO(), filter, data, opts).Decode(&resultUpdate)
     if err != nil { return resultUpdate, 0, err }
@@ -121,6 +134,24 @@ func (m *Mongo)Update(doc string, filter interface{}, data interface{}) (result 
     } else {
         return resultUpdate, int(resultUpdate["id"].(float64)), nil
     }
+}
+
+//不存在则插入，存在则更新      //强制所有数据使用bson.M
+func (m *Mongo)Updates(doc string, filter bson.M, data bson.M) (updateCount int, err error) {
+    //处理更新时间问题
+    if _, ok := data["$set"]; ok {
+        if _, ok := data["$set"].(bson.M); ok {
+            data["$set"].(bson.M)["update_at"] = time.Now()
+        }
+        if _, ok := data["$set"].(map[string]interface{}); ok {
+            data["$set"].(map[string]interface{})["update_at"] = time.Now()
+        }
+    } else {
+        data["$set"] = bson.M{"update_at": time.Now()}
+    }
+    result, err := m.coll(doc).UpdateMany(context.TODO(), filter, data)
+    if err != nil { return 0, err }
+    return int(result.MatchedCount), nil
 }
 
 //批量插入数据
@@ -150,12 +181,9 @@ func (m *Mongo)Gets(doc string, filter interface{}, opts ...map[string]interface
     opt := options.Find()
     if len(opts) > 0 {
         for key, v := range opts[0] {
-            if key == "limit" || key == "pagesize" {
-                opt.SetLimit(int64(v.(int)))
-            }
-            if key == "skip" || key == "offset" {
-                opt.SetSkip(int64(v.(int)))
-            }
+            if key == "limit" || key == "pagesize" { opt.SetLimit(int64(v.(int))) }
+            if key == "skip" || key == "offset" { opt.SetSkip(int64(v.(int))) }
+            if key == "sort" { opt.SetSort(v) }
         }
     }
     cursor, err := m.coll(doc).Find(context.TODO(), filter, opt)
@@ -166,19 +194,23 @@ func (m *Mongo)Gets(doc string, filter interface{}, opts ...map[string]interface
 
 //删除一条数据
 func (m *Mongo)Delete(doc string, filter interface{}) (count int, err error) {
-    opts := options.Delete()
-    res, err := m.coll(doc).DeleteOne(context.TODO(), filter, opts)
-    if err != nil { return 0, err }
-    return int(res.DeletedCount), nil
-}
-
-//删除多条数据
-func (m *Mongo)Deletes(doc string, filter interface{}) (count int, err error) {
+    //opts := options.Delete()
+    //res, err := m.coll(doc).DeleteOne(context.TODO(), filter, opts)
+    //if err != nil { return 0, err }
+    //return int(res.DeletedCount), nil
     opts := options.Delete()
     res, err := m.coll(doc).DeleteMany(context.TODO(), filter, opts)
     if err != nil { return 0, err }
     return int(res.DeletedCount), nil
 }
+
+////删除多条数据
+//func (m *Mongo)Deletes(doc string, filter interface{}) (count int, err error) {
+//    opts := options.Delete()
+//    res, err := m.coll(doc).DeleteMany(context.TODO(), filter, opts)
+//    if err != nil { return 0, err }
+//    return int(res.DeletedCount), nil
+//}
 
 func (m *Mongo)Count(doc string, filter interface{}) (count int, err error) {
     opts := options.Count().SetMaxTime(2 * time.Second)
