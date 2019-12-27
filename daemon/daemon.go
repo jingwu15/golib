@@ -144,7 +144,7 @@ func Start_output(pidfile, outputFile string) (err error) {
     cmdArgs := os.Args
 	cmdArgs[0], _ = filepath.Abs(cmdArgs[0])
     cmd := strings.Replace(strings.Join(cmdArgs, " "), "start", "run", 1)
-    cmd = fmt.Sprintf("nohup %s &> %s &", cmd, outputFile)
+    cmd = fmt.Sprintf("nohup %s &>> %s &", cmd, outputFile)
 	client := exec.Command("sh", "-c", cmd)
 	err = client.Start()
 	if err != nil { return err }
