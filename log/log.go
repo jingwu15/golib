@@ -8,9 +8,19 @@ import (
     "github.com/rifflock/lfshook"
 )
 
+type Cfg struct {
+    Dir string
+    Pre string
+    Level string
+}
+type Logger struct {
+    logger *logrus.Logger
+    entry  *logrus.Entry
+}
+
 var (
     keyDefault = "default"
-    loggers = map[string]*logrus.Logger{}
+    loggers = map[string]*Logger{}
     levels = map[string]logrus.Level{
         "trace": logrus.TraceLevel,
         "debug": logrus.DebugLevel,
@@ -21,12 +31,6 @@ var (
         "panic": logrus.PanicLevel,
     }
 )
-
-type Cfg struct {
-    Dir string
-    Pre string
-    Level string
-}
 
 var cfg = Cfg{Dir: "/tmp", Pre: "log_default", Level: "debug"}
 func InitCfg(cfgUser Cfg) error {
@@ -54,14 +58,14 @@ var formats = map[string]logrus.Formatter{
     "text": &logrus.TextFormatter{FullTimestamp: true, DisableColors: true, TimestampFormat: "2006-01-02 15:04:05"},
 }
 
-func Get(keys ...string) *logrus.Logger {
+func Get(keys ...string) *Logger {
     key := "default"
     if len(keys) > 0 { key = keys[0] }
     if _, ok := loggers[key]; !ok {
-        loggers[key] = logrus.New()
-        loggers[key].SetFormatter(&logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "2006-01-02 15:04:05"})
-        loggers[key].SetOutput(os.Stdout)
-        loggers[key].SetLevel(levels[cfg.Level])
+        logger := logrus.New()
+        logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "2006-01-02 15:04:05"})
+        logger.SetOutput(os.Stdout)
+        logger.SetLevel(levels[cfg.Level])
 
         fname := ""
         if key == "default" {
@@ -69,7 +73,7 @@ func Get(keys ...string) *logrus.Logger {
         } else {
             fname = fmt.Sprintf("%s/%s_%s.log", cfg.Dir, cfg.Pre, key)
         }
-        loggers[key].Hooks.Add(lfshook.NewHook(
+        logger.Hooks.Add(lfshook.NewHook(
             lfshook.PathMap{
                 logrus.TraceLevel: fname,
                 logrus.DebugLevel: fname,
@@ -81,101 +85,83 @@ func Get(keys ...string) *logrus.Logger {
 	        },
 		    &logrus.JSONFormatter{TimestampFormat: "2006-01-02 15:04:05"},
 	    ))
-        loggers[key].WithFields(logrus.Fields{"btype": key})
+        loggers[key] = &Logger{logger: logger, entry: logger.WithFields(map[string]interface{}{"_logkey": key})}
     }
     return loggers[key]
 }
 
 func Close_stdout(key string) {
     if _, ok := loggers[key]; ok {
-        loggers[key].SetOutput(ioutil.Discard)
+        loggers[key].logger.SetOutput(ioutil.Discard)
     }
 }
 
 func Output_file(key, fname string) {
     fp, e := os.OpenFile(fname, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
     if _, ok := loggers[key]; ok && e == nil {
-        loggers[key].SetOutput(fp)
+        loggers[key].logger.SetOutput(fp)
     }
 }
 
 func Format(key, format string) {
-    logger, okLog := loggers[key]
+    _, okLog := loggers[key]
     _, okFormat := formats[format]
     if okLog && okFormat {
-        logger.SetFormatter(formats[format])
+        loggers[key].logger.SetFormatter(formats[format])
     }
 }
 
-func Debug(args ...interface{}) {
-    Get(keyDefault).Debug(args...)
+func (l *Logger)WithFields(params map[string]interface{}) {
+    for k, v := range l.entry.Data { params[k] = v }
+    l.entry = l.logger.WithFields(params)
 }
-func Debugf(format string, args ...interface{}) {
-    Get(keyDefault).Debugf(format, args...)
-}
-func Debugln(args ...interface{}) {
-    Get(keyDefault).Debugln(args...)
-}
-func Error(args ...interface{}) {
-    Get(keyDefault).Error(args...)
-}
-func Errorf(format string, args ...interface{}) {
-    Get(keyDefault).Errorf(format, args...)
-}
-func Errorln(args ...interface{}) {
-    Get(keyDefault).Errorln(args...)
-}
-func Fatal(args ...interface{}) {
-    Get(keyDefault).Fatal(args...)
-}
-func Fatalf(format string, args ...interface{}) {
-    Get(keyDefault).Fatalf(format, args...)
-}
-func Fatalln(args ...interface{}) {
-    Get(keyDefault).Fatalln(args...)
-}
-func Info(args ...interface{}) {
-    Get(keyDefault).Info(args...)
-}
-func Infof(format string, args ...interface{}) {
-    Get(keyDefault).Infof(format, args...)
-}
-func Infoln(args ...interface{}) {
-    Get(keyDefault).Infoln(args...)
-}
-func Panic(args ...interface{}) {
-    Get(keyDefault).Panic(args...)
-}
-func Panicf(format string, args ...interface{}) {
-    Get(keyDefault).Panicf(format, args...)
-}
-func Panicln(args ...interface{}) {
-    Get(keyDefault).Panicln(args...)
-}
-func Print(args ...interface{}) {
-    Get(keyDefault).Print(args...)
-}
-func Printf(format string, args ...interface{}) {
-    Get(keyDefault).Printf(format, args...)
-}
-func Println(args ...interface{}) {
-    Get(keyDefault).Println(args...)
-}
-func Warn(args ...interface{}) {
-    Get(keyDefault).Warn(args...)
-}
-func Warnf(format string, args ...interface{}) {
-    Get(keyDefault).Warnf(format, args...)
-}
-func Warning(args ...interface{}) {
-    Get(keyDefault).Warning(args...)
-}
-func Warningf(format string, args ...interface{}) {
-    Get(keyDefault).Warningf(format, args...)
-}
-func Warningln(args ...interface{}) {
-    Get(keyDefault).Warningln(args...)
-}
-func Warnln(args ...interface{}) {
-    Get(keyDefault).Warnln(args...)
-}
+
+func (l *Logger)Debug(args ...interface{})  { l.entry.Debug(args...)  }
+func (l *Logger)Info(args ...interface{})   { l.entry.Info(args...)   }
+func (l *Logger)Warn(args ...interface{})   { l.entry.Warn(args...)   }
+func (l *Logger)Error(args ...interface{})  { l.entry.Error(args...)  }
+func (l *Logger)Fatal(args ...interface{})  { l.entry.Fatal(args...)  }
+func (l *Logger)Panic(args ...interface{})  { l.entry.Panic(args...)  }
+func (l *Logger)Print(args ...interface{})  { l.entry.Print(args...)  }
+
+func (l *Logger)Debugln(args ...interface{}) { l.entry.Debugln(args...) }
+func (l *Logger)Infoln(args ...interface{})  { l.entry.Infoln(args...)  }
+func (l *Logger)Warnln(args ...interface{})  { l.entry.Warnln(args...)  }
+func (l *Logger)Errorln(args ...interface{}) { l.entry.Errorln(args...) }
+func (l *Logger)Fatalln(args ...interface{}) { l.entry.Fatalln(args...) }
+func (l *Logger)Panicln(args ...interface{}) { l.entry.Panicln(args...) }
+func (l *Logger)Println(args ...interface{}) { l.entry.Println(args...) }
+
+func (l *Logger)Debugf(format string, args ...interface{})  { l.entry.Debugf(format, args...) }
+func (l *Logger)Infof(format string, args ...interface{})   { l.entry.Infof(format, args...)  }
+func (l *Logger)Warnf(format string, args ...interface{})   { l.entry.Warnf(format, args...)  }
+func (l *Logger)Errorf(format string, args ...interface{})  { l.entry.Errorf(format, args...) }
+func (l *Logger)Fatalf(format string, args ...interface{})  { l.entry.Fatalf(format, args...) }
+func (l *Logger)Panicf(format string, args ...interface{})  { l.entry.Panicf(format, args...) }
+func (l *Logger)Printf(format string, args ...interface{})  { l.entry.Printf(format, args...) }
+
+func WithFields(params map[string]interface{}) {    Get(keyDefault).WithFields(params)          }
+
+func Debug(args ...interface{}) { Get(keyDefault).Debug(args...)  }
+func Info(args ...interface{})  { Get(keyDefault).Info(args...)   }
+func Warn(args ...interface{})  { Get(keyDefault).Warn(args...)   }
+func Error(args ...interface{}) { Get(keyDefault).Error(args...)  }
+func Fatal(args ...interface{}) { Get(keyDefault).Fatal(args...)  }
+func Panic(args ...interface{}) { Get(keyDefault).Panic(args...)  }
+func Print(args ...interface{}) { Get(keyDefault).Print(args...)  }
+
+func Debugln(args ...interface{}) { Get(keyDefault).Debugln(args...) }
+func Infoln(args ...interface{})  { Get(keyDefault).Infoln(args...)  }
+func Warnln(args ...interface{})  { Get(keyDefault).Warnln(args...)  }
+func Errorln(args ...interface{}) { Get(keyDefault).Errorln(args...) }
+func Fatalln(args ...interface{}) { Get(keyDefault).Fatalln(args...) }
+func Panicln(args ...interface{}) { Get(keyDefault).Panicln(args...) }
+func Println(args ...interface{}) { Get(keyDefault).Println(args...) }
+
+func Debugf(format string, args ...interface{}) { Get(keyDefault).Debugf(format, args...)  }
+func Infof(format string, args ...interface{})  { Get(keyDefault).Infof(format, args...)   }
+func Warnf(format string, args ...interface{})  { Get(keyDefault).Warnf(format, args...)   }
+func Errorf(format string, args ...interface{}) { Get(keyDefault).Errorf(format, args...)  }
+func Fatalf(format string, args ...interface{}) { Get(keyDefault).Fatalf(format, args...)  }
+func Panicf(format string, args ...interface{}) { Get(keyDefault).Panicf(format, args...)  }
+func Printf(format string, args ...interface{}) { Get(keyDefault).Printf(format, args...)  }
