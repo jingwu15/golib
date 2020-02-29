@@ -229,11 +229,14 @@ func (c Sched) CalcNextWeek(schedWeek string) []int {
     return used
 }
 
-
 //天处理
 func (c Sched) CalcNextDay(scheday string) []int {
 	currentDay	:= c.Current.Day()		//日
+
     monthDayMap := map[int]int{1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+    if c.Current.Year() % 4 == 0 {
+        monthDayMap = map[int]int{1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+    }
 	rows        := CalcUse(scheday, 1, monthDayMap[c.Current.Month()])
 	if len(rows) == 0 {
 		return []int{currentDay, currentDay}
