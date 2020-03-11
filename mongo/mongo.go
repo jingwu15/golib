@@ -25,6 +25,11 @@ var mongos = map[string]*Mongo{}
 func New(uri, db string) (mg *Mongo, err error) {
     m := Mongo{Uri: uri, Db: db, Colls: map[string]*mongo.Collection{}, IsConn: false}
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+    //opt := options.Client()
+    //opt.SetConnectTimeout(10 * time.Second)
+    //opt.SetMaxPoolSize(50)
+    //opt.SetMinPoolSize(20)
+    //opt.ApplyURI(m.Uri)
     m.Client, err = mongo.Connect(ctx, options.Client().ApplyURI(m.Uri))
     if err != nil { return &m, err }
     m.Conn = m.Client.Database(db)

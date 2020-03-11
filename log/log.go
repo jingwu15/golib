@@ -85,7 +85,11 @@ func Get(keys ...string) *Logger {
 	        },
 		    &logrus.JSONFormatter{TimestampFormat: "2006-01-02 15:04:05"},
 	    ))
-        loggers[key] = &Logger{logger: logger, entry: logger.WithFields(map[string]interface{}{"_logkey": key})}
+        if key == "default" {
+            loggers[key] = &Logger{logger: logger, entry: logger.WithFields(map[string]interface{}{})}
+        } else {
+            loggers[key] = &Logger{logger: logger, entry: logger.WithFields(map[string]interface{}{"_logkey": key})}
+        }
     }
     return loggers[key]
 }
