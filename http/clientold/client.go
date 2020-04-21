@@ -56,7 +56,7 @@ func NewRequest() Request {
 		Url:     "",
 		Body:    "",
 		Headers: map[string]string{},
-		Uuid:    uuid.Must(uuid.NewV4()).String(),
+		Uuid:    uuid.NewV4().String(),
 		Ext:     map[string]string{},
 	}
 }
@@ -68,7 +68,7 @@ func NewReqRess() ReqRess {
 			Url:     "",
 			Body:    "",
 			Headers: map[string]string{},
-			Uuid:    uuid.Must(uuid.NewV4()).String(),
+			Uuid:    uuid.NewV4().String(),
 			Ext:     map[string]string{},
 		},
 		Times: 0,
