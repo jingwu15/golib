@@ -53,7 +53,6 @@ func Map_vkMap(data interface{}) (ret interface{}, err error) {
 //map 取 key 列表
 func Map_kList(data interface{}) (ret interface{}, err error) {
     t0 := reflect.TypeOf(data).String()
-    fmt.Println("t0----", t0)
     switch t0 {
     case "map[string]string":
         ret := []string{}

@@ -62,7 +62,7 @@ func V_gt0(value interface{}) (e error) {
 
 //是否为数字
 func V_isNumber(value interface{}) (e error) {
-    if GetType(value) != "string" { return fmt.Errorf("域名应为字符串") }
+    if GetType(value) != "int" { return fmt.Errorf("数据应为数字") }
     NotLine := "^\\d{1,}$"
     match, e := regexp.MatchString(NotLine, value.(string))
     if !match { return fmt.Errorf("必须为数字") }

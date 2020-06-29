@@ -184,6 +184,7 @@ func (m *Mongo)Get(doc string, filter interface{}) (result bson.M, err error) {
 
 func (m *Mongo)Gets(doc string, filter interface{}, opts ...map[string]interface{}) (results []bson.M, err error) {
     opt := options.Find()
+    opt.SetMaxTime(30 * time.Second)
     if len(opts) > 0 {
         for key, v := range opts[0] {
             if key == "limit" || key == "pagesize" { opt.SetLimit(int64(v.(int))) }
@@ -218,7 +219,7 @@ func (m *Mongo)Delete(doc string, filter interface{}) (count int, err error) {
 //}
 
 func (m *Mongo)Count(doc string, filter interface{}) (count int, err error) {
-    opts := options.Count().SetMaxTime(2 * time.Second)
+    opts := options.Count().SetMaxTime(30 * time.Second)
     count64, err := m.coll(doc).CountDocuments(context.TODO(), filter, opts)
     if err != nil { return 0, err }
     return int(count64), err
